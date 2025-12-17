@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="569" height="301" viewBox="0 0 569 301" xmlns="http://www.w3.org/2000/svg">
+  <!-- Radio wave circles -->
+  <g transform="translate(284.5, 80)">
+    <!-- Outermost wave -->
+    <circle cx="0" cy="0" r="90" fill="none" stroke="rgba(255,120,50,0.3)" stroke-width="1.5"/>
+
+    <!-- Third wave -->
+    <circle cx="0" cy="0" r="70" fill="none" stroke="rgba(255,120,50,0.5)" stroke-width="2"/>
+
+    <!-- Second wave -->
+    <circle cx="0" cy="0" r="50" fill="none" stroke="rgba(255,120,50,0.7)" stroke-width="2.5"/>
+
+    <!-- Innermost wave -->
+    <circle cx="0" cy="0" r="30" fill="none" stroke="rgba(255,120,50,0.9)" stroke-width="3"/>
+
+    <!-- Central dot -->
+    <circle cx="0" cy="0" r="8" fill="rgba(255,120,50,1.0)"/>
+  </g>
+</svg>
