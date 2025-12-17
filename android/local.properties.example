@@ -1,0 +1,4 @@
+# Android signing credentials
+# These are used for release builds. Get values from a team member.
+android.storePassword=your-store-password
+android.keyPassword=your-key-password
