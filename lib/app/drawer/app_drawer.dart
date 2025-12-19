@@ -80,7 +80,7 @@ class _AppDrawerState extends State<AppDrawer> {
               title: AppLocalizations.of(context)!.title_legal,
               onTap: () {
                 try {
-                  launchUrlString("https://mixd.tv/imprint.html");
+                  launchUrlString("https://b2b.radiozeit.de/imprint-2/");
                 } catch (e) {
                   // empty
                 }
@@ -98,7 +98,7 @@ class _AppDrawerState extends State<AppDrawer> {
                 // launchUrl with email inquiry@radiozeit.de
                 final Uri emailLaunchUri = Uri(
                   scheme: 'mailto',
-                  path: 'inquiry@radiozeit.de',
+                  path: 'info@radiozeit.de',
                   // query: encodeQueryParameters(<String, String>{
                   //   'subject': 'Example Subject & Symbols are allowed!',
                   // }),
