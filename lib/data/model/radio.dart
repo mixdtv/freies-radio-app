@@ -88,9 +88,14 @@ class RadioStream {
 
   String getPlatformStream() {
     // Use source stream if enabled via --dart-define flag and source URL exists
+    print('DEBUG [RadioStream] useSourceStream: ${AppConfig.useSourceStream}');
+    print('DEBUG [RadioStream] source URL: $source');
+    print('DEBUG [RadioStream] hls URL: $hls');
     if (AppConfig.useSourceStream && source.isNotEmpty) {
+      print('DEBUG [RadioStream] Using SOURCE stream');
       return source;
     }
+    print('DEBUG [RadioStream] Using HLS stream');
     return hls;
     // if(Platform.isIOS) return hls;
     // return dash;
