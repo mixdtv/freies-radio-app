@@ -39,15 +39,22 @@ class MediaPlayer extends BaseAudioHandler {
   }
 
   @override
-  onTaskRemoved() async {
-
+  Future<void> onTaskRemoved() async {
+    _log.info('onTaskRemoved - cleaning up player');
     await stop();
-    await destroy();
+    // Clear media item to dismiss notification
+    mediaItem.add(null);
+    playbackState.add(playbackState.value.copyWith(
+      processingState: AudioProcessingState.idle,
+      playing: false,
+    ));
+    destroy();
     await super.onTaskRemoved();
   }
 
   @override
-  onNotificationDeleted() async{
+  Future<void> onNotificationDeleted() async {
+    _log.info('onNotificationDeleted - stopping player');
     await stop();
     await super.onNotificationDeleted();
   }

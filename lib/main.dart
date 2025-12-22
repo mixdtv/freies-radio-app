@@ -54,7 +54,7 @@ Future<void> main() async {
       androidNotificationChannelName: 'Freies Radio',
       androidNotificationOngoing: true,
       androidNotificationIcon: 'drawable/radio_icon',
-
+      androidStopForegroundOnPause: true,
     ),
   );
  //  _audioHandler.configure(AudioSessionConfiguration.music());
