@@ -39,14 +39,15 @@ class RadioListItem extends StatelessWidget {
                 imageUrl: radio.thumbnail,
                 width: double.infinity,
                 height: double.infinity,
-                errorWidget: (context, error, stackTrace) => Container(
-                width: double.infinity,
-                height: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey,
-                  borderRadius: BorderRadius.circular(4)
+                errorWidget: (context, url, error) => Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(4)
+                  ),
                 ),
-              ),),
+              ),
             ),
             const SizedBox(width: 16,),
             Expanded(
