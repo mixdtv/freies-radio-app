@@ -64,6 +64,11 @@ class Repository {
   final Map<String, _CachedPodcast> _podcastCache = {};
   static const Duration _cacheExpiration = Duration(minutes: 5);
 
+  // Radio list cache for preloading
+  RadioListResponse? _cachedRadioList;
+  DateTime? _radioListCacheTime;
+  static const Duration _radioListCacheExpiration = Duration(seconds: 30);
+
   Repository._();
 
   init(String id) {
@@ -80,7 +85,17 @@ class Repository {
     Location? location,
     String? query,
     CancelToken? cancel,
+    bool useCache = true,
   }) {
+    // Return cached data if available and not expired (only for requests without location/query filters)
+    if (useCache && location == null && query == null && _cachedRadioList != null && _radioListCacheTime != null) {
+      final cacheAge = DateTime.now().difference(_radioListCacheTime!);
+      if (cacheAge < _radioListCacheExpiration) {
+        _log.info('loadRadioList: returning cached data (${_cachedRadioList!.radioList.length} stations)');
+        return Future.value(_cachedRadioList!);
+      }
+    }
+
     Map<String,dynamic> data = {
       "source":"mobile_app",
     };
@@ -104,6 +119,13 @@ class Repository {
     ).then((value) {
       final response = RadioListResponse(value);
       _log.info('loadRadioList: received ${response.radioList.length} stations');
+
+      // Cache the response (only for requests without filters)
+      if (location == null && query == null) {
+        _cachedRadioList = response;
+        _radioListCacheTime = DateTime.now();
+      }
+
       return response;
     }).catchError((error) {
       _log.severe('loadRadioList: error $error');

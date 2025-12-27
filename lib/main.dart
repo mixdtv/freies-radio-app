@@ -10,6 +10,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radiozeit/features/auth/session_cubit.dart';
 import 'package:radiozeit/features/auth/splash_page.dart';
+import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/app/router.dart';
 import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/app/theme_cubit.dart';
@@ -36,10 +37,12 @@ Future<void> main() async {
    Repository.getInstance().init(deviceId);
 
 
-  String initPage = SplashPage.path;
-  // if(!settings.isFirstStart) {
-  //   initPage = RadioListPage.path;
-  // }
+  String initPage;
+  if (settings.isFirstStart) {
+    initPage = SplashPage.path;
+  } else {
+    initPage = RadioListPage.path;
+  }
    GoRouter router = AppNavigation.initAppRouter(
       initPage: initPage
   );
