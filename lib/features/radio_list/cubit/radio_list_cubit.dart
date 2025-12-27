@@ -148,7 +148,6 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
   }
 
   _loadRadioList(Location? location) async {
-
     cancelLoadRadio = CancelToken();
     var resp = await repo.loadRadioList(location:location,cancel:cancelLoadRadio);
     if(resp.success) {
@@ -165,7 +164,6 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
             loadingError: resp.message
         ));
       }
-
     }
   }
 

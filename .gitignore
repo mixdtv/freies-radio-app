@@ -68,3 +68,4 @@ android/app/key.jks
 android/app/*.keystore
 
 TODO.md
+CLAUDE.md
