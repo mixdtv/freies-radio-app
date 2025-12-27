@@ -6,7 +6,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radiozeit/features/auth/session_cubit.dart';
 import 'package:radiozeit/features/auth/splash_page.dart';
@@ -27,15 +26,14 @@ late AudioHandler _audioHandler;
 Future<void> main() async {
    initLogging(level: Level.INFO);
 
-   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+   WidgetsFlutterBinding.ensureInitialized();
 
   AppSettings settings =  AppSettings.getInstance();
   await settings.loadSettings();
-    String deviceId = await settings.getDeviceId();
+
+  String deviceId = await settings.getDeviceId();
 
    Repository.getInstance().init(deviceId);
-
 
   String initPage;
   if (settings.isFirstStart) {
@@ -49,9 +47,9 @@ Future<void> main() async {
 
   var mediaPlayer = MediaPlayer();
 
-  _audioHandler = await AudioService.init(
+  // Initialize audio service in background (don't block UI)
+  AudioService.init(
     builder: () => mediaPlayer,
-
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'it.radiozeit.nkl.channel.audio',
       androidNotificationChannelName: 'Freies Radio',
@@ -59,12 +57,10 @@ Future<void> main() async {
       androidNotificationIcon: 'drawable/radio_icon',
       androidStopForegroundOnPause: true,
     ),
-  );
- //  _audioHandler.configure(AudioSessionConfiguration.music());
-
-   mediaPlayer.setSpeed(settings.getSpeed().speed);
-
-  FlutterNativeSplash.remove();
+  ).then((handler) {
+    _audioHandler = handler;
+    mediaPlayer.setSpeed(settings.getSpeed().speed);
+  });
 
   runApp(MultiBlocProvider(
     providers: [
