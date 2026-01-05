@@ -61,4 +61,15 @@ class AppConfig {
 
   /// Show all menu items:
   // static const List<String> visibleMenuItems = ['transcript', 'timeline', 'podcasts', 'visual', 'about'];
+
+  /// Enable archive playback feature
+  /// When true, shows play button on past programs in the timeline
+  /// Defaults to true (enabled)
+  ///
+  /// Usage:
+  /// flutter run --dart-define=ENABLE_ARCHIVE_PLAYBACK=false
+  static const bool enableArchivePlayback = bool.fromEnvironment(
+    'ENABLE_ARCHIVE_PLAYBACK',
+    defaultValue: true,
+  );
 }

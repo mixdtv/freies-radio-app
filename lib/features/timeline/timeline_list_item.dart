@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:radiozeit/app/style.dart';
+import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/utils/extensions.dart';
@@ -13,6 +14,9 @@ class TimelineListItem extends StatelessWidget {
   final Function() onPlay;
 
   const TimelineListItem({super.key, required this.program, required this.onPlay, required this.isActive});
+
+  /// Whether this program is in the past and can be played from archive
+  bool get canPlayArchive => program.end.isBefore(DateTime.now());
 
 
   @override
@@ -80,10 +84,18 @@ class TimelineListItem extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                                // InkWell(
-                                //     onTap: onPlay,
-                                //     child: SvgPicture.asset("assets/icons/ic_program_play.svg",color: isDark ? Colors.white : Colors.black54,))
-
+                                if (AppConfig.enableArchivePlayback && canPlayArchive)
+                                  InkWell(
+                                    onTap: onPlay,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: SvgPicture.asset(
+                                        "assets/icons/ic_program_play.svg",
+                                        color: isDark ? Colors.white : Colors.black54,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 16,),

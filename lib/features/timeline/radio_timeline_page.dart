@@ -145,7 +145,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
   }
 
   _playProgram(RadioEpg program) {
-
+    context.read<PlayerCubit>().playArchiveProgram(program);
   }
 
   _appBar() {
