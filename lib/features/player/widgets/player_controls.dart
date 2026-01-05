@@ -26,7 +26,9 @@ class PlayerControls extends StatelessWidget {
     return BlocBuilder<PlayerCubit, PlayerCubitState>(
       builder: (context, playerState) {
         final podcastEpisode = playerState.currentPodcastEpisode;
+        final archiveProgram = playerState.currentArchiveProgram;
         final bool isPodcastPlaying = podcastEpisode != null;
+        final bool isArchivePlaying = archiveProgram != null;
 
         TextTheme textTheme = Theme.of(context).textTheme;
         bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -43,7 +45,7 @@ class PlayerControls extends StatelessWidget {
                 bottom: 0,
                 child: GestureDetector(
                   onTap: () {
-                    if(selectedRadio != null && !isPodcastPlaying) {
+                    if(selectedRadio != null && !isPodcastPlaying && !isArchivePlaying) {
                       if(GoRouterState.of(context).fullPath == RadioListPage.path) {
                         context.read<BottomNavigationCubit>().openMenu(true);
                         context.push(MenuConfig.getDefaultPagePath());
@@ -53,15 +55,21 @@ class PlayerControls extends StatelessWidget {
                       }
                     }
                   },
-                  child: isPodcastPlaying
-                    ? _buildPodcastInfo(context, podcastEpisode, textTheme, isDark)
-                    : _buildRadioInfo(context, activeProgram, selectedRadio, textTheme, isDark),
+                  child: isArchivePlaying
+                    ? _buildArchiveInfo(context, archiveProgram, textTheme, isDark)
+                    : isPodcastPlaying
+                      ? _buildPodcastInfo(context, podcastEpisode, textTheme, isDark)
+                      : _buildRadioInfo(context, activeProgram, selectedRadio, textTheme, isDark),
                 ),
               ),
               Positioned(
                   top: 0,
                   right: 0,
-                  child: _PlayButtonWrapper(player: player, isPodcast: isPodcastPlaying)
+                  child: _PlayButtonWrapper(
+                    player: player,
+                    isPodcast: isPodcastPlaying,
+                    isArchive: isArchivePlaying,
+                  )
               )
             ],
           ),
@@ -126,13 +134,54 @@ class PlayerControls extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildArchiveInfo(BuildContext context, RadioEpg program, TextTheme textTheme, bool isDark) {
+    // Format the time range for display
+    final startTime = DateFormat('HH:mm').format(program.start);
+    final endTime = DateFormat('HH:mm').format(program.end);
+    final dateStr = DateFormat('d. MMM').format(program.start);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text("Archiv · $dateStr",
+            style: textTheme.bodyLarge?.copyWith(
+                fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
+                color: textTheme.bodyLarge?.color?.withOpacity(0.6))
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            program.title,
+            style: textTheme.titleLarge,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Text(
+          "$startTime – $endTime · ${program.subheadline}",
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodyLarge?.copyWith(
+              fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
+              color: textTheme.bodyLarge?.color?.withOpacity(0.6))
+        ),
+      ],
+    );
+  }
 }
 
 class _PlayButtonWrapper extends StatefulWidget {
   final MediaPlayer player;
   final bool isPodcast;
+  final bool isArchive;
 
-  const _PlayButtonWrapper({required this.player, required this.isPodcast});
+  const _PlayButtonWrapper({
+    required this.player,
+    required this.isPodcast,
+    this.isArchive = false,
+  });
 
   @override
   State<_PlayButtonWrapper> createState() => _PlayButtonWrapperState();
@@ -176,17 +225,20 @@ class _PlayButtonWrapperState extends State<_PlayButtonWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    // Archive and podcast both use pause/resume, live radio uses stop
+    final bool usesPauseResume = widget.isPodcast || widget.isArchive;
+
     return PlayButton(
       onClick: () {
-        print("player.isPlaying.value ${widget.player.isPlaying.value}, isPodcast: ${widget.isPodcast}");
+        print("player.isPlaying.value ${widget.player.isPlaying.value}, isPodcast: ${widget.isPodcast}, isArchive: ${widget.isArchive}");
         if (widget.player.isPlaying.value) {
-          if (widget.isPodcast) {
+          if (usesPauseResume) {
             widget.player.pause();
           } else {
             widget.player.stop();
           }
         } else {
-          if (widget.isPodcast && widget.player.isPause()) {
+          if (usesPauseResume && widget.player.isPause()) {
             widget.player.resume();
           } else {
             widget.player.play();
@@ -195,7 +247,7 @@ class _PlayButtonWrapperState extends State<_PlayButtonWrapper> {
       },
       isPlay: _isPlaying,
       isLoading: _isLoading,
-      isPodcast: widget.isPodcast,
+      isPodcast: usesPauseResume,
     );
   }
 }

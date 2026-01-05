@@ -100,6 +100,7 @@ class TimeLineCubit extends Cubit<TimeLineState> with BlocPresentationMixin<Time
     if(response.success) {
       DateTime now = getPlayingDate();
       List<RadioEpg> allEpg = state.allEpg.combineWith(response.list);
+      allEpg.sort((a, b) => a.start.compareTo(b.start));
       List<RadioEpg> futureEpg = allEpg.where((e) => now.isBefore(e.end)).toList();
 
       emit(state.copyWith(

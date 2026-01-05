@@ -80,7 +80,7 @@ class _AppDrawerState extends State<AppDrawer> {
               title: AppLocalizations.of(context)!.title_legal,
               onTap: () {
                 try {
-                  launchUrlString("https://b2b.radiozeit.de/imprint-2/");
+                  launchUrlString("https://freies-radio.radiozeit.de/imprint/");
                 } catch (e) {
                   // empty
                 }

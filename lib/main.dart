@@ -68,7 +68,7 @@ Future<void> main() async {
           settings: AppSettings.getInstance(),
           deviceId: deviceId,
       )),
-      BlocProvider(create: (context) => PlayerCubit(mediaPlayer)),
+      BlocProvider(create: (context) => PlayerCubit(mediaPlayer, deviceId: deviceId)),
       BlocProvider(create: (context) => ThemeCubit(settings.getThemeType()),),
       BlocProvider(create: (context) => LocationCubit(),),
     ],

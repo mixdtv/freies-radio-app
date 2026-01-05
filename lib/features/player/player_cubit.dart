@@ -4,13 +4,19 @@ import 'package:bloc/bloc.dart';
 import 'package:radiozeit/data/model/podcast.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
+import 'package:radiozeit/features/player/archive_audio_service.dart';
 import 'package:radiozeit/features/player/media_player.dart';
 import 'package:radiozeit/utils/settings.dart';
 
 class PlayerCubit extends Cubit<PlayerCubitState> {
   MediaPlayer player;
   AppSettings settings = AppSettings.getInstance();
-  PlayerCubit(this.player) : super(PlayerCubitState());
+  final ArchiveAudioService _archiveService = ArchiveAudioService();
+  final String deviceId;
+
+  PlayerCubit(this.player, {required this.deviceId}) : super(PlayerCubitState()) {
+    _archiveService.setDeviceId(deviceId);
+  }
 
 
   @override
@@ -35,13 +41,13 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
     _playLiveRadio(radio);
   }
 
-  /// Switch to live radio stream, even if a podcast from the same station is playing
+  /// Switch to live radio stream, even if a podcast or archive is playing
   switchToLiveRadio() {
     final radio = state.selectedRadio;
     if (radio == null) return;
 
-    // If already playing live radio (no podcast), do nothing
-    if (state.currentPodcastEpisode == null) return;
+    // If already playing live radio (no podcast or archive), do nothing
+    if (state.currentPodcastEpisode == null && state.currentArchiveProgram == null) return;
 
     _playLiveRadio(radio);
   }
@@ -51,7 +57,9 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
     emit(state.copyWith(
       selectedRadio: radio,
       currentPodcastEpisode: null,
+      currentArchiveProgram: null,
       clearPodcast: true,
+      clearArchive: true,
     ));
     player.playMediaItem(MediaItem(
         id: radio.stream.getPlatformStream(),
@@ -73,9 +81,44 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
     // ));
   }
 
-  playProgram(RadioEpg program) {
-    emit(state.copyWith(currentProgram: program));
+  /// Play archived audio for a past program using HLS streaming.
+  ///
+  /// Uses the backend's HLS playlist endpoint which serves an m3u8 playlist
+  /// pointing to individual 1-minute m4a segments. This provides instant
+  /// response, gapless playback, and full seeking support.
+  playArchiveProgram(RadioEpg program) {
+    final radio = state.selectedRadio;
+    if (radio == null) return;
 
+    final playbackInfo = _archiveService.buildPlaybackInfo(
+      program: program,
+      streamPrefix: radio.prefix,
+    );
+
+    if (playbackInfo == null) return;
+
+    emit(state.copyWith(
+      currentArchiveProgram: program,
+      currentPodcastEpisode: null,
+      clearPodcast: true,
+    ));
+
+    player.playArchiveHls(
+      url: playbackInfo.playlistUrl,
+      headers: playbackInfo.headers,
+      item: MediaItem(
+        id: 'archive:${program.id}',
+        title: program.title,
+        displayTitle: program.title,
+        displaySubtitle: program.subheadline,
+        duration: Duration(seconds: program.duration),
+        extras: {
+          'prefix': radio.prefix,
+          'isArchive': true,
+        },
+        artUri: program.icon.isNotEmpty ? Uri.tryParse(program.icon) : null,
+      ),
+    );
   }
 
   pause() {
@@ -113,21 +156,34 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
 class PlayerCubitState {
   AppRadio? selectedRadio;
   PodcastEpisode? currentPodcastEpisode;
+  RadioEpg? currentArchiveProgram;
 
   PlayerCubitState({
     this.selectedRadio,
     this.currentPodcastEpisode,
+    this.currentArchiveProgram,
   });
+
+  /// Whether currently playing archived content (not live)
+  bool get isPlayingArchive => currentArchiveProgram != null;
+
+  /// Whether currently playing podcast content
+  bool get isPlayingPodcast => currentPodcastEpisode != null;
+
+  /// Whether playing live radio stream
+  bool get isPlayingLive => !isPlayingArchive && !isPlayingPodcast;
 
   PlayerCubitState copyWith({
     AppRadio? selectedRadio,
-    RadioEpg? currentProgram,
     PodcastEpisode? currentPodcastEpisode,
+    RadioEpg? currentArchiveProgram,
     bool clearPodcast = false,
+    bool clearArchive = false,
   }) {
     return PlayerCubitState(
       selectedRadio: selectedRadio ?? this.selectedRadio,
       currentPodcastEpisode: clearPodcast ? null : (currentPodcastEpisode ?? this.currentPodcastEpisode),
+      currentArchiveProgram: clearArchive ? null : (currentArchiveProgram ?? this.currentArchiveProgram),
     );
   }
 }
