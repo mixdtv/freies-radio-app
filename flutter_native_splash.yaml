@@ -54,12 +54,29 @@ flutter_native_splash:
   # 640 pixels in diameter.
   # App icon without an icon background: This should be 1152×1152 pixels, and fit within a circle
   # 768 pixels in diameter.
-    image: assets/images/splash_app.png
+  #
+  # HOW TO CREATE android12splash.png (avoiding circular clipping):
+  # Android 12+ clips the splash icon to a circle. To prevent the logo from being cut off,
+  # scale it smaller so it fits entirely inside the 768px diameter circle.
+  #
+  # Command to generate from source logo:
+  #   magick -size 1152x1152 xc:'#0E0E0F' \
+  #     \( /path/to/fr1_eckig.png -resize 600x600 \) \
+  #     -gravity center -composite \
+  #     assets/images/android12splash.png
+  #
+  # This creates:
+  #   - 1152x1152 canvas with dark background (#0E0E0F)
+  #   - Logo scaled to 600x600 (fits inside 768px circle)
+  #   - Logo centered on canvas
+  #
+  # After updating the image, run: dart run flutter_native_splash:create
+    image: assets/images/android12splash.png
 
   # Splash screen background color.
     color: "#0E0E0F"
 
-  # App icon background color.
+  # App icon background color - matches main color to hide circle
     icon_background_color: "#0E0E0F"
 
   # The branding property allows you to specify an image used as branding in the splash screen.
