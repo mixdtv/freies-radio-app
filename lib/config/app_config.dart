@@ -5,6 +5,29 @@ class AppConfig {
 
   static const String _epgBaseUrl = String.fromEnvironment('EPG_URL');
 
+  /// Validates that all required environment variables are set.
+  /// Call this at the very start of main() to fail fast.
+  static void validateEnv() {
+    final missing = <String>[];
+    if (_apiBaseUrl.isEmpty) missing.add('API_URL');
+    if (_epgBaseUrl.isEmpty) missing.add('EPG_URL');
+
+    if (missing.isNotEmpty) {
+      throw StateError('''
+
+╔══════════════════════════════════════════════════════════════════╗
+║  MISSING ENVIRONMENT CONFIGURATION                               ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Missing: ${missing.join(', ').padRight(50)}║
+║                                                                  ║
+║  Run with:                                                       ║
+║  flutter run --dart-define-from-file=.env.json                   ║
+║  flutter build apk --dart-define-from-file=.env.json             ║
+╚══════════════════════════════════════════════════════════════════╝
+''');
+    }
+  }
+
   /// Main API base URL (sanitized with trailing slash)
   static String get apiBaseUrl {
     if (_apiBaseUrl.isEmpty) {

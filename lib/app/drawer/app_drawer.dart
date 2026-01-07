@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -50,9 +49,7 @@ class _AppDrawerState extends State<AppDrawer> {
               child: Container(
                   padding: EdgeInsets.symmetric(vertical: 40),
                   child: Center(
-                    child: Theme.of(context).brightness == Brightness.dark
-                        ? Image.asset("assets/images/splash.png",width: 200,)
-                        : Image.asset("assets/images/splash_black.png",width: 200,),
+                    child: Image.asset("assets/images/logo_freies_radio.png", width: 200),
                   )),
             ),
             _row(
@@ -80,7 +77,7 @@ class _AppDrawerState extends State<AppDrawer> {
               title: AppLocalizations.of(context)!.title_legal,
               onTap: () {
                 try {
-                  launchUrlString("https://freies-radio.radiozeit.de/imprint/");
+                  launchUrlString("https://freies-radio.radiozeit.de/legal/");
                 } catch (e) {
                   // empty
                 }

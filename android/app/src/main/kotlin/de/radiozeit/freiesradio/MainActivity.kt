@@ -1,4 +1,4 @@
-package it.radiozeit.nkl
+package de.radiozeit.freiesradio
 import com.ryanheise.audioservice.AudioServiceActivity;
 import io.flutter.embedding.android.FlutterActivity
 

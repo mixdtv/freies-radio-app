@@ -8,7 +8,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Radiozeit"
+            "value" : "Freies Radio"
           }
         }
       }
@@ -20,7 +20,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "radiozeit"
+            "value" : "Freies Radio"
           }
         }
       }
@@ -49,7 +49,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "App not use microphone"
+            "value" : "This app does not use the microphone."
           }
         }
       }

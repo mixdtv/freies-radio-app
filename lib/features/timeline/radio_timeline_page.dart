@@ -61,8 +61,18 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
       _log.fine('Found index: $index');
       if(index >= 0) {
         isScrolled = true;
-        itemScrollController.jumpTo(index: index);
-        _log.fine('Scrolled to index: $index');
+        try {
+          itemScrollController.jumpTo(index: index);
+          _log.fine('Scrolled to index: $index');
+        } catch (e) {
+          _log.warning('Failed to scroll: $e, retrying...');
+          isScrolled = false;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && !isScrolled) {
+              _scrollToCurrent();
+            }
+          });
+        }
       }
     } else {
       _log.fine('activeEpg is empty, cannot scroll');

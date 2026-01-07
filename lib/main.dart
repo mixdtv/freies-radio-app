@@ -7,8 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/features/auth/session_cubit.dart';
-import 'package:radiozeit/features/auth/splash_page.dart';
+import 'package:radiozeit/features/location/location_request_page.dart';
 import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/app/router.dart';
 import 'package:radiozeit/app/style.dart';
@@ -24,6 +25,9 @@ import 'package:radiozeit/l10n/app_localizations.dart';
 // final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 late AudioHandler _audioHandler;
 Future<void> main() async {
+   // Fail fast if environment is not configured
+   AppConfig.validateEnv();
+
    initLogging(level: Level.INFO);
 
    WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +41,7 @@ Future<void> main() async {
 
   String initPage;
   if (settings.isFirstStart) {
-    initPage = SplashPage.path;
+    initPage = LocationRequestPage.path;
   } else {
     initPage = RadioListPage.path;
   }
@@ -51,10 +55,10 @@ Future<void> main() async {
   AudioService.init(
     builder: () => mediaPlayer,
     config: const AudioServiceConfig(
-      androidNotificationChannelId: 'it.radiozeit.nkl.channel.audio',
+      androidNotificationChannelId: 'de.radiozeit.freiesradio.channel.audio',
       androidNotificationChannelName: 'Freies Radio',
       androidNotificationOngoing: true,
-      androidNotificationIcon: 'drawable/radio_icon',
+      androidNotificationIcon: 'mipmap/ic_launcher',
       androidStopForegroundOnPause: true,
     ),
   ).then((handler) {

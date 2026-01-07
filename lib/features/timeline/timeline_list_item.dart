@@ -8,15 +8,22 @@ import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
-class TimelineListItem extends StatelessWidget {
+class TimelineListItem extends StatefulWidget {
   final RadioEpg program;
   final bool isActive;
   final Function() onPlay;
 
   const TimelineListItem({super.key, required this.program, required this.onPlay, required this.isActive});
 
+  @override
+  State<TimelineListItem> createState() => _TimelineListItemState();
+}
+
+class _TimelineListItemState extends State<TimelineListItem> {
+  bool _isDescExpanded = false;
+
   /// Whether this program is in the past and can be played from archive
-  bool get canPlayArchive => program.end.isBefore(DateTime.now());
+  bool get canPlayArchive => widget.program.end.isBefore(DateTime.now());
 
 
   @override
@@ -35,7 +42,7 @@ class TimelineListItem extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("${program.start.toFormat("HH:mm")} ", //- ${program.type}
+                      Text("${widget.program.start.toFormat("HH:mm")} ", //- ${widget.program.type}
                         style: textTheme.bodyLarge?.copyWith(
                             fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
                             color:textTheme.bodyLarge?.color?.withOpacity(0.6)
@@ -48,6 +55,7 @@ class TimelineListItem extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12)
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
@@ -59,7 +67,7 @@ class TimelineListItem extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(9),
                                       color: isDark ? Color(0xff2A272D) : Colors.white
                                   ),
-                                  child: Image.network(program.icon,
+                                  child: Image.network(widget.program.icon,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stackTrace) {
                                     return Center(
@@ -71,11 +79,11 @@ class TimelineListItem extends StatelessWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(program.subheadline,style: textTheme.bodyLarge?.copyWith(
+                                      Text(widget.program.subheadline,style: textTheme.bodyLarge?.copyWith(
                                           fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
                                           color:textTheme.bodyLarge?.color?.withOpacity(0.6) ),),
-                                      Text(program.title,style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w700)),
-                                      Text(program.hosts.join(" "),
+                                      Text(widget.program.title,style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w700)),
+                                      Text(widget.program.hosts.join(" "),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: textTheme.bodyLarge?.copyWith(
@@ -86,7 +94,7 @@ class TimelineListItem extends StatelessWidget {
                                 ),
                                 if (AppConfig.enableArchivePlayback && canPlayArchive)
                                   InkWell(
-                                    onTap: onPlay,
+                                    onTap: widget.onPlay,
                                     borderRadius: BorderRadius.circular(20),
                                     child: Padding(
                                       padding: const EdgeInsets.all(8.0),
@@ -98,13 +106,8 @@ class TimelineListItem extends StatelessWidget {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 16,),
-                            Text(
-                              program.desc.join(" "),
-                              maxLines: 10,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.bodyMedium?.copyWith(color: textTheme.bodyMedium?.color?.withOpacity(0.6)),
-                            )
+                            if (widget.program.desc.isNotEmpty)
+                              _buildDescription(textTheme)
                           ],
                         ),
                       )
@@ -115,7 +118,7 @@ class TimelineListItem extends StatelessWidget {
             ],
           ),
         ),
-        if(isActive)
+        if(widget.isActive)
           Positioned(
             right: 32,
             top: 20,
@@ -146,6 +149,45 @@ class TimelineListItem extends StatelessWidget {
 
 
 
+
+  Widget _buildDescription(TextTheme textTheme) {
+    final descStyle = textTheme.bodyMedium?.copyWith(
+      color: textTheme.bodyMedium?.color?.withOpacity(0.6),
+    );
+    // Heuristic: ~40 chars per line on mobile, 2 lines ≈ 80 chars
+    final isLongText = widget.program.desc.length > 80;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          widget.program.desc,
+          maxLines: _isDescExpanded ? 100 : 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.left,
+          style: descStyle,
+        ),
+        if (isLongText)
+          GestureDetector(
+            onTap: () => setState(() => _isDescExpanded = !_isDescExpanded),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  _isDescExpanded ? "weniger" : "mehr",
+                  textAlign: TextAlign.right,
+                  style: descStyle?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 
   _mark() {
     int type = Random().nextInt(4);

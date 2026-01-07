@@ -5,7 +5,6 @@ import 'package:radiozeit/app/app_page.dart';
 import 'package:radiozeit/app/app_scope.dart';
 import 'package:radiozeit/app/pages/appearance_page.dart';
 import 'package:radiozeit/data/model/podcast.dart';
-import 'package:radiozeit/features/auth/splash_page.dart';
 import 'package:radiozeit/features/location/location_request_page.dart';
 import 'package:radiozeit/features/location/model/location_city.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
@@ -33,12 +32,6 @@ class AppNavigation {
           initialLocation: initPage,
 
           routes: <RouteBase>[
-            GoRoute(
-              path: SplashPage.path,
-              builder: (BuildContext context, GoRouterState state) {
-                return  const SplashPage();
-              },
-            ),
             GoRoute(
               path: LocationRequestPage.path,
               builder: (BuildContext context, GoRouterState state) {

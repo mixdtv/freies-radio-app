@@ -82,6 +82,45 @@ TestFlight allows testing before public release:
 - **Internal Testing:** Up to 100 team members (instant, no review)
 - **External Testing:** Up to 10,000 testers (requires Beta App Review)
 
+### ⚡ Quickest Path to TestFlight
+
+**Skip the full App Store submission process - TestFlight is much faster!**
+
+#### Step 1: Build & Upload
+
+```bash
+# Build the iOS archive
+.fvm/flutter_sdk/bin/flutter build ipa
+```
+
+Then in Xcode:
+1. Open `ios/Runner.xcworkspace` (not `.xcodeproj`)
+2. Sign in: **Xcode → Settings → Accounts** → Add your Apple ID
+3. Select your Team: **Runner → Signing & Capabilities**
+4. Select **"Any iOS Device (arm64)"** as destination (not a simulator)
+5. **Product → Archive**
+6. After archive completes: **Distribute App → App Store Connect → Upload**
+
+#### Step 2: In App Store Connect
+
+Go to the **TestFlight** tab (not "Vertrieb"/Distribution):
+
+**For Internal Testing (fastest - no review needed):**
+- Your uploaded build appears automatically after processing (~10-30 min)
+- Add testers under **Internal Testing → App Store Connect Users**
+- Testers must have an App Store Connect account with your team
+- Build is available immediately
+
+**For External Testing (requires brief review):**
+- Create a group under **External Testing**
+- Add testers by email (any email, no App Store Connect account needed)
+- Select build and submit for TestFlight review (usually 24-48h, often same day)
+- Once approved, adding more testers is instant (no new review)
+
+**💡 Tip:** Enable **Public Link** in your external testing group to share a URL anyone can use - no need to add emails individually.
+
+---
+
 ### Setting Up Internal Testing
 
 1. App Store Connect → Users and Access
