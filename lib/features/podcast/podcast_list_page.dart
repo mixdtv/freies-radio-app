@@ -223,8 +223,6 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -233,8 +231,6 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
                       fontSize: 14,
                       color: Colors.grey.shade600,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Text(

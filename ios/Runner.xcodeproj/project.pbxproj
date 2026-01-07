@@ -16,7 +16,6 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		BCE0CEE52C5A4C5F0008729E /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BCE0CEE42C5A4C5F0008729E /* InfoPlist.xcstrings */; };
-		BCEA99182C354B8600124BCA /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BCEA99172C354B8600124BCA /* StoreKit.framework */; };
 		F5AB26EF10C15F18C6B75C3E /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E058DD31D81767BE6E840EA2 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -66,7 +65,6 @@
 		99501275425FD8B36EE349D8 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		BCA14B212B7BA79C00C59037 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		BCE0CEE42C5A4C5F0008729E /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
-		BCEA99172C354B8600124BCA /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		BD1CD42677B29EE6A581797F /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		E058DD31D81767BE6E840EA2 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		EDA10ECBA9B3F17FF6B5CD1D /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -78,7 +76,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				F5AB26EF10C15F18C6B75C3E /* Pods_Runner.framework in Frameworks */,
-				BCEA99182C354B8600124BCA /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -104,7 +101,6 @@
 		8A160DD1F6342E8C707F4D67 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				BCEA99172C354B8600124BCA /* StoreKit.framework */,
 				E058DD31D81767BE6E840EA2 /* Pods_Runner.framework */,
 				885EF26EDF91014567997CCE /* Pods_RunnerTests.framework */,
 			);
@@ -493,7 +489,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -516,7 +512,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -534,7 +530,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -550,7 +546,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl.RunnerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio.RunnerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
@@ -685,7 +681,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -721,7 +717,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = it.radiozeit.nkl;
+				PRODUCT_BUNDLE_IDENTIFIER = de.radiozeit.freiesradio;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -202,16 +204,18 @@ class PodcastEpisodesPage extends StatelessWidget {
     return Column(
       children: [
         _buildAppBar(context, activePodcast),
-        _buildPodcastHeader(activePodcast),
         Expanded(
           child: activePodcast.episodes.isEmpty
               ? const Center(
                   child: Text('No episodes available'),
                 )
               : ListView.builder(
-                  itemCount: activePodcast.episodes.length,
+                  itemCount: activePodcast.episodes.length + 1,
                   itemBuilder: (context, index) {
-                    final episode = activePodcast.episodes[index];
+                    if (index == 0) {
+                      return _buildPodcastHeader(context, activePodcast);
+                    }
+                    final episode = activePodcast.episodes[index - 1];
                     return _buildEpisodeItem(context, episode, activePodcast);
                   },
                 ),
@@ -259,82 +263,142 @@ class PodcastEpisodesPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPodcastHeader(Podcast activePodcast) {
+  Widget _buildPodcastHeader(BuildContext context, Podcast activePodcast) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textTheme = Theme.of(context).textTheme;
+
+    Widget imageWidget;
+    if (activePodcast.imageUrl.isNotEmpty && Uri.tryParse(activePodcast.imageUrl)?.hasAbsolutePath == true) {
+      imageWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CachedNetworkImage(
+          imageUrl: activePodcast.imageUrl,
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            width: 120,
+            height: 120,
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+          ),
+          errorWidget: (context, url, error) => Container(
+            width: 120,
+            height: 120,
+            color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+            child: const Icon(Icons.image_not_supported),
+          ),
+        ),
+      );
+    } else {
+      imageWidget = Container(
+        width: 120,
+        height: 120,
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.podcasts, size: 50, color: isDark ? Colors.grey.shade600 : Colors.grey),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
-      child: Row(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (activePodcast.imageUrl.isNotEmpty && Uri.tryParse(activePodcast.imageUrl)?.hasAbsolutePath == true)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl: activePodcast.imageUrl,
-                width: 100,
-                height: 100,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.grey.shade300,
-                ),
-                errorWidget: (context, url, error) => Container(
-                  width: 100,
-                  height: 100,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.image_not_supported),
-                ),
-              ),
-            ),
-          if (activePodcast.imageUrl.isEmpty || Uri.tryParse(activePodcast.imageUrl)?.hasAbsolutePath != true)
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.podcasts, size: 50, color: Colors.grey),
-            ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              imageWidget,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
                   activePodcast.title,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  activePodcast.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
                   ),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (activePodcast.description.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              activePodcast.description,
+              style: textTheme.bodyMedium?.copyWith(
+                color: textTheme.bodyMedium?.color?.withOpacity(0.6),
+              ),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildEpisodeItem(BuildContext context, PodcastEpisode episode, Podcast activePodcast) {
+    return _EpisodeItem(episode: episode, podcastTitle: activePodcast.title);
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (minutes > 0) {
+      return '${minutes}m ${seconds}s';
+    } else {
+      return '${seconds}s';
+    }
+  }
+}
+
+class _EpisodeItem extends StatefulWidget {
+  final PodcastEpisode episode;
+  final String podcastTitle;
+
+  const _EpisodeItem({required this.episode, required this.podcastTitle});
+
+  @override
+  State<_EpisodeItem> createState() => _EpisodeItemState();
+}
+
+class _EpisodeItemState extends State<_EpisodeItem> {
+  bool _isDescExpanded = false;
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (minutes > 0) {
+      return '${minutes}m ${seconds}s';
+    } else {
+      return '${seconds}s';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final descStyle = TextStyle(
+      fontSize: 14,
+      color: Colors.grey.shade700,
+    );
+
     return InkWell(
       onTap: () {
-        if (episode.audioUrl.isNotEmpty) {
+        if (widget.episode.audioUrl.isNotEmpty) {
           context.read<PlayerCubit>().playPodcastEpisode(
-                episode,
-                activePodcast.title,
+                widget.episode,
+                widget.podcastTitle,
               );
         }
       },
@@ -351,11 +415,11 @@ class PodcastEpisodesPage extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (episode.imageUrl.isNotEmpty && Uri.tryParse(episode.imageUrl)?.hasAbsolutePath == true)
+            if (widget.episode.imageUrl.isNotEmpty && Uri.tryParse(widget.episode.imageUrl)?.hasAbsolutePath == true)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
-                  imageUrl: episode.imageUrl,
+                  imageUrl: widget.episode.imageUrl,
                   width: 60,
                   height: 60,
                   fit: BoxFit.cover,
@@ -372,7 +436,7 @@ class PodcastEpisodesPage extends StatelessWidget {
                   ),
                 ),
               ),
-            if (episode.imageUrl.isEmpty || Uri.tryParse(episode.imageUrl)?.hasAbsolutePath != true)
+            if (widget.episode.imageUrl.isEmpty || Uri.tryParse(widget.episode.imageUrl)?.hasAbsolutePath != true)
               Container(
                 width: 60,
                 height: 60,
@@ -388,44 +452,86 @@ class PodcastEpisodesPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    episode.title,
+                    widget.episode.title,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  if (episode.pubDate != null)
+                  if (widget.episode.pubDate != null)
                     Text(
-                      DateFormat('MMM d, yyyy').format(episode.pubDate!),
+                      DateFormat('MMM d, yyyy').format(widget.episode.pubDate!),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                  if (episode.duration != null)
+                  if (widget.episode.duration != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        _formatDuration(episode.duration!),
+                        _formatDuration(widget.episode.duration!),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,
                         ),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  Text(
-                    episode.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
+                  if (widget.episode.description.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final textSpan = TextSpan(
+                          text: widget.episode.description,
+                          style: descStyle,
+                        );
+                        final textPainter = TextPainter(
+                          text: textSpan,
+                          maxLines: 4,
+                          textDirection: ui.TextDirection.ltr,
+                          textScaler: MediaQuery.textScalerOf(context),
+                        )..layout(maxWidth: constraints.maxWidth);
+                        // Use TextPainter check OR character fallback for edge cases
+                        final hasOverflow = textPainter.didExceedMaxLines ||
+                            widget.episode.description.length > 100;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.episode.description,
+                              maxLines: _isDescExpanded ? 100 : 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: descStyle,
+                            ),
+                            if (hasOverflow)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Material(
+                                    type: MaterialType.transparency,
+                                    child: InkWell(
+                                      onTap: () => setState(() => _isDescExpanded = !_isDescExpanded),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                                        child: Text(
+                                          _isDescExpanded ? "weniger" : "mehr",
+                                          style: descStyle.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -439,19 +545,5 @@ class PodcastEpisodesPage extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    } else if (minutes > 0) {
-      return '${minutes}m ${seconds}s';
-    } else {
-      return '${seconds}s';
-    }
   }
 }

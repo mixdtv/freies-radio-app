@@ -8,7 +8,7 @@ class RadioEpg {
 
   String id;
   String title;
-  List<String> desc;
+  String desc;
   List<String> hosts;
 
   String url;
@@ -37,7 +37,7 @@ class RadioEpg {
   factory RadioEpg.fromJson(Map<String, dynamic> map) {
     return RadioEpg(
       id: JsonMap.toStr(map['_id']) ?? "",
-      desc: JsonMap.toList(map['description']).cast<String>().map((e) => e.stripHtml()).toList(),
+      desc: (JsonMap.toStr(map['description']) ?? "").stripHtml(),
       hosts: JsonMap.toList(map['hosts']).cast<String>(),
       title:JsonMap.toStr(map['title']) ?? "",
       url: JsonMap.toStr(map['url']) ?? "",
@@ -66,7 +66,7 @@ class RadioEpg {
 
   RadioEpg.empty():
         id = "",
-        desc = const [],
+        desc = "",
         hosts = const [],
         title = "",
         url = "",

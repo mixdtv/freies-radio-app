@@ -69,3 +69,6 @@ android/app/*.keystore
 
 TODO.md
 CLAUDE.md
+.selected_device
+
+private_keys/
