@@ -292,10 +292,18 @@ These accounts can make "purchases" without being charged
 Google Play requires AAB format (not APK):
 
 ```bash
+# Using FVM (this project)
+.fvm/flutter_sdk/bin/flutter build appbundle --release --dart-define-from-file=.env.json
+
+# Or without FVM
 flutter build appbundle --release --dart-define-from-file=.env.json
 ```
 
-Output: `build/app/outputs/bundle/release/app-release.aab`
+**Note:** The `--dart-define-from-file=.env.json` flag is required - it provides environment configuration (API endpoints, etc.) that the app needs to function.
+
+Output: `build/app/outputs/bundle/release/freiesradio-v<versionCode>(<versionName>)-release.aab`
+
+Example: `freiesradio-v2(1.0.0)-release.aab`
 
 ### 2. Verify Build
 

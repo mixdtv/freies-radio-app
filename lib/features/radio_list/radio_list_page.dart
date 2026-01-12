@@ -246,7 +246,7 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
     if (radio.podcasts != null && radio.podcasts!.isNotEmpty) {
       context.read<PodcastCubit>().preloadPodcasts(radio.podcasts!, radioName: radio.name);
     }
-    context.go(MenuConfig.getDefaultPagePath());
+    context.push(MenuConfig.getDefaultPagePath());
   }
 
   _showFavorite(BuildContext appContext) {

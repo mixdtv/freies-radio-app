@@ -142,7 +142,7 @@ class RadioSearchPage extends StatelessWidget {
     if (radio.podcasts != null && radio.podcasts!.isNotEmpty) {
       context.read<PodcastCubit>().preloadPodcasts(radio.podcasts!, radioName: radio.name);
     }
-    context.go(MenuConfig.getDefaultPagePath());
+    context.push(MenuConfig.getDefaultPagePath());
   }
 
   _onSelectCity(BuildContext context, LocationCity city) {

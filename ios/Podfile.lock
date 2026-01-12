@@ -1,4 +1,6 @@
 PODS:
+  - add_2_calendar (0.0.1):
+    - Flutter
   - audio_service (0.0.1):
     - Flutter
   - audio_session (0.0.1):
@@ -25,6 +27,7 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
+  - add_2_calendar (from `.symlinks/plugins/add_2_calendar/ios`)
   - audio_service (from `.symlinks/plugins/audio_service/ios`)
   - audio_session (from `.symlinks/plugins/audio_session/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
@@ -38,6 +41,8 @@ DEPENDENCIES:
   - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 EXTERNAL SOURCES:
+  add_2_calendar:
+    :path: ".symlinks/plugins/add_2_calendar/ios"
   audio_service:
     :path: ".symlinks/plugins/audio_service/ios"
   audio_session:
@@ -62,6 +67,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
+  add_2_calendar: e626377f607d055070093cbd56abd1fafa1a02a5
   audio_service: 2023a4a1bdb2fd1443e7b00bdbdb1baa321525db
   audio_session: 9bdd3bf46960d4322cb8c3cb6138295dcfe84eee
   device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896

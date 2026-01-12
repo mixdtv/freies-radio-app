@@ -99,6 +99,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
               RadioEpg? activeEpg = context.select((TimeLineCubit cubit) => cubit.state.activeEpg,);
               bool isLoading = context.select((TimeLineCubit cubit) => cubit.state.isLoading,);
               List<RadioEpg> allEpg = context.select((TimeLineCubit cubit) => cubit.state.allEpg,);
+              String stationName = context.select((TimeLineCubit cubit) => cubit.state.activeRadio?.name ?? '',);
 
               if (allEpg.isEmpty) {
                 if (isLoading) {
@@ -138,7 +139,9 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                           TimelineListItem(
                             isActive: activeEpg?.id == item.id,
                             program: item,
+                            stationName: stationName,
                             onPlay: () => _playProgram(item),
+                            onLive: () => _switchToLive(),
                           ),
                         ],
                       );
@@ -156,6 +159,10 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
 
   _playProgram(RadioEpg program) {
     context.read<PlayerCubit>().playArchiveProgram(program);
+  }
+
+  _switchToLive() {
+    context.read<PlayerCubit>().switchToLiveRadio();
   }
 
   _appBar() {
