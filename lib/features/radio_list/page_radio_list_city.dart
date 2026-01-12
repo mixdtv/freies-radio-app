@@ -81,7 +81,7 @@ class _PageRadioListCityState extends State<PageRadioListCity> {
     if (radio.podcasts != null && radio.podcasts!.isNotEmpty) {
       context.read<PodcastCubit>().preloadPodcasts(radio.podcasts!, radioName: radio.name);
     }
-    context.go(MenuConfig.getDefaultPagePath());
+    context.push(MenuConfig.getDefaultPagePath());
   }
 
   _topBar(BuildContext context) {

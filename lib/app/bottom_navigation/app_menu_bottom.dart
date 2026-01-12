@@ -163,21 +163,21 @@ class AppMenuBottom extends StatelessWidget {
     context.read<BottomNavigationCubit>().toPage(page);
     switch (page) {
       case 0:
-        context.go(RadioTranscriptPage.path);
+        context.replace(RadioTranscriptPage.path);
       case 1:
-        context.go(RadioTimeLinePage.path);
+        context.replace(RadioTimeLinePage.path);
       case 2:
         // Navigate directly to podcast detail if there's only one podcast
         final selectedRadio = context.read<TimeLineCubit>().state.activeRadio;
         if (selectedRadio?.podcasts?.length == 1) {
-          context.go(PodcastEpisodesPage.path);
+          context.replace(PodcastEpisodesPage.path);
         } else {
-          context.go(PodcastListPage.path);
+          context.replace(PodcastListPage.path);
         }
       case 3:
-        context.go(RadioVisualPage.path);
+        context.replace(RadioVisualPage.path);
       case 4:
-        context.go(RadioAboutPage.path);
+        context.replace(RadioAboutPage.path);
     }
   }
 }

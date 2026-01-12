@@ -24,6 +24,7 @@ import 'package:radiozeit/l10n/app_localizations.dart';
 // final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 // final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 late AudioHandler _audioHandler;
+
 Future<void> main() async {
    // Fail fast if environment is not configured
    AppConfig.validateEnv();

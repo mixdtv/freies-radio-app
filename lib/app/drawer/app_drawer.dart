@@ -44,7 +44,7 @@ class _AppDrawerState extends State<AppDrawer> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CloseButton(),
+            CloseButton(onPressed: () => Scaffold.of(context).closeDrawer()),
             Expanded(
               child: Container(
                   padding: EdgeInsets.symmetric(vertical: 40),

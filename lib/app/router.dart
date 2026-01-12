@@ -27,10 +27,8 @@ class AppNavigation {
   static GoRouter initAppRouter({
     required String initPage
   }) {
-      return GoRouter(
-
+      final router = GoRouter(
           initialLocation: initPage,
-
           routes: <RouteBase>[
             GoRoute(
               path: LocationRequestPage.path,
@@ -70,18 +68,16 @@ class AppNavigation {
                 },
               ),
 
-                  GoRoute(
-                    path: RadioListPage.path,
-                    builder: (BuildContext context, GoRouterState state) {
-                      return  const AppPage(child: RadioListPage());
-                    },
-                  ),
+              GoRoute(
+                path: RadioListPage.path,
+                builder: (BuildContext context, GoRouterState state) {
+                  return const AppPage(child: RadioListPage());
+                },
+              ),
 
               ShellRoute(
                   pageBuilder: (context, state, child) {
                     return CupertinoPage(
-                        // key: state.pageKey,
-                        // restorationId: state.pageKey.value,
                         child: AppPage(child: child)
                     );
                   },
@@ -89,44 +85,46 @@ class AppNavigation {
                     GoRoute(
                       path: RadioAboutPage.path,
                       builder: (BuildContext context, GoRouterState state) {
-                        return  const RadioAboutPage();
+                        return const RadioAboutPage();
                       },
-                    ),GoRoute(
+                    ),
+                    GoRoute(
                       path: RadioTimeLinePage.path,
                       builder: (BuildContext context, GoRouterState state) {
-                        return  const RadioTimeLinePage();
+                        return const RadioTimeLinePage();
                       },
-                    ),GoRoute(
+                    ),
+                    GoRoute(
                       path: RadioTranscriptPage.path,
                       builder: (BuildContext context, GoRouterState state) {
-                        return  const RadioTranscriptPage();
-
+                        return const RadioTranscriptPage();
                       },
-                    ),GoRoute(
+                    ),
+                    GoRoute(
                       path: RadioVisualPage.path,
                       builder: (BuildContext context, GoRouterState state) {
-                        return  BlocProvider(
+                        return BlocProvider(
                             create: (context) => RadioVisualCubit(context.read<PlayerCubit>().player),
                             child: const RadioVisualPage());
                       },
-                    ),GoRoute(
+                    ),
+                    GoRoute(
                       path: PodcastListPage.path,
                       builder: (BuildContext context, GoRouterState state) {
                         return const PodcastListPage();
                       },
-                    ),GoRoute(
+                    ),
+                    GoRoute(
                       path: PodcastEpisodesPage.path,
                       builder: (BuildContext context, GoRouterState state) {
                         final podcast = state.extra as Podcast?;
                         return PodcastEpisodesPage(podcast: podcast);
                       },
                     ),
-
                   ]),
             ])
 
           ]);
+      return router;
   }
-
-
 }
