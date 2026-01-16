@@ -33,9 +33,10 @@ class _LocationRequestViewState extends State<LocationRequestView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
           children: [
             const Expanded(child: SizedBox()),
             Image.asset("assets/images/logo_freies_radio.png", width: 140),
@@ -79,7 +80,8 @@ class _LocationRequestViewState extends State<LocationRequestView> {
                   );
                 },
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
