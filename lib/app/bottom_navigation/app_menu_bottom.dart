@@ -32,39 +32,42 @@ class AppMenuBottom extends StatelessWidget {
       bool isRadioSelected = context.select((PlayerCubit cubit) => cubit.state.selectedRadio != null);
       if(!isRadioSelected) return SizedBox();
 
-      return SizedBox(
-        height: isShow ? 122 + 4 + 49 : 122 + 4 + 6,
-        child: Stack(
-          fit: StackFit.loose,
-          children: [
-            Container(
-                decoration: BoxDecoration(
-                    gradient: AppGradient.getPanelGradient(context)
-                ),
-                margin: const EdgeInsets.only(top: 4),
-                child: Column(
-                  children: [
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
+      return SafeArea(
+        top: false,
+        child: SizedBox(
+          height: isShow ? 122 + 4 + 49 : 122 + 4 + 6,
+          child: Stack(
+            fit: StackFit.loose,
+            children: [
+              Container(
+                  decoration: BoxDecoration(
+                      gradient: AppGradient.getPanelGradient(context)
+                  ),
+                  margin: const EdgeInsets.only(top: 4),
+                  child: Column(
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
 
-                      child: isShow ? _menu() : const SizedBox(height: 6,)
-                    ),
-                    BlocBuilder<TimeLineCubit, TimeLineState>(
-                      builder: (context, state) {
-                        return PlayerControls(
-                          activeProgram: state.activeEpg ,
-                          selectedRadio: state.activeRadio,
-                        );
-                      },
-                    ),
-                  ],
-                )),
-            Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: PlayerProgress())
-          ],
+                        child: isShow ? _menu() : const SizedBox(height: 6,)
+                      ),
+                      BlocBuilder<TimeLineCubit, TimeLineState>(
+                        builder: (context, state) {
+                          return PlayerControls(
+                            activeProgram: state.activeEpg ,
+                            selectedRadio: state.activeRadio,
+                          );
+                        },
+                      ),
+                    ],
+                  )),
+              Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: PlayerProgress())
+            ],
+          ),
         ),
       );
     }
