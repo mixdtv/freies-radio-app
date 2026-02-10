@@ -4,6 +4,7 @@ import 'package:radiozeit/app/widgets/shimmer.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/features/radio_list/radio_list_item.dart';
 import 'package:radiozeit/features/radio_list/radio_list_item_big.dart';
+import 'package:radiozeit/features/radio_list/widget/radio_not_found_info.dart';
 
 class RadioListBig extends StatelessWidget {
   final List<AppRadio> list;
@@ -77,6 +78,10 @@ class RadioListBig extends StatelessWidget {
                 spacing: 16,
                 children: list.map((e) => _rowItem(e)).toList(),
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: RadioNotFoundInfo(),
             ),
           ],
         ),
