@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:radiozeit/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class RadioNotFoundInfo extends StatelessWidget {
 
@@ -21,6 +22,17 @@ class RadioNotFoundInfo extends StatelessWidget {
           launchUrl(emailLaunchUri);
 
         }, child: Text(AppLocalizations.of(context)!.search_not_found_button,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700,decoration: TextDecoration.underline)
+          )
+        ),
+        const SizedBox(height: 8,),
+        TextButton(onPressed: () {
+          try {
+            launchUrlString("https://freies-radio.radiozeit.de/legal/");
+          } catch (e) {
+            // empty
+          }
+        }, child: Text(AppLocalizations.of(context)!.title_legal,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700,decoration: TextDecoration.underline)
           )
         ),

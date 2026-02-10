@@ -88,6 +88,7 @@ Future<void> main() async {
           isDark = themeType == AppStyle.themeDark;
         }
         return MaterialApp.router(
+          debugShowCheckedModeBanner: false,
           theme: AppStyle.light(),
           darkTheme: AppStyle.dark(),
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
