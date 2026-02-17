@@ -43,27 +43,42 @@ class PlayerControls extends StatelessWidget {
           child: Column(
             children: [
               // Thin progress indicator at top
-              _buildProgressBar(context, player, isLive, isDark),
+              _buildProgressBar(context, player, isLive, isArchive, isDark,
+                  archiveProgram: isArchive ? playerState.currentArchiveProgram : null),
               // Content row
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      // Tappable text area -> opens expanded player
+                      // Tappable area -> opens expanded player
                       Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => _openExpandedPlayer(context),
-                          child: isArchive
-                              ? _buildArchiveText(
-                                  playerState.currentArchiveProgram!,
-                                  textTheme)
-                              : isPodcast
-                                  ? _buildPodcastText(
-                                      playerState.currentPodcastEpisode!,
-                                      textTheme)
-                                  : _buildLiveText(textTheme),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.keyboard_arrow_up,
+                                size: 24,
+                                color: isDark
+                                    ? Colors.white.withOpacity(0.4)
+                                    : Colors.black.withOpacity(0.4),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: isArchive
+                                    ? _buildArchiveText(
+                                        playerState.currentArchiveProgram!,
+                                        textTheme)
+                                    : isPodcast
+                                        ? _buildPodcastText(
+                                            playerState.currentPodcastEpisode!,
+                                            textTheme)
+                                        : _buildLiveText(textTheme),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -85,7 +100,8 @@ class PlayerControls extends StatelessWidget {
   }
 
   Widget _buildProgressBar(
-      BuildContext context, MediaPlayer player, bool isLive, bool isDark) {
+      BuildContext context, MediaPlayer player, bool isLive, bool isArchive, bool isDark,
+      {RadioEpg? archiveProgram}) {
     if (isLive) {
       return LinearProgressIndicator(
         value: progress / 100,
@@ -101,6 +117,11 @@ class PlayerControls extends StatelessWidget {
       );
     }
 
+    // For archive: use EPG program duration instead of raw audio duration
+    final double? programDuration = isArchive && archiveProgram != null
+        ? archiveProgram.end.difference(archiveProgram.start).inSeconds.toDouble()
+        : null;
+
     // Podcast / Archive: listen to position and duration
     return ValueListenableBuilder<double>(
       valueListenable: player.position,
@@ -108,7 +129,8 @@ class PlayerControls extends StatelessWidget {
         return ValueListenableBuilder<double>(
           valueListenable: player.duration,
           builder: (ctx, dur, _) {
-            final value = dur > 0 ? (pos / dur).clamp(0.0, 1.0) : 0.0;
+            final effectiveDur = programDuration ?? dur;
+            final value = effectiveDur > 0 ? (pos / effectiveDur).clamp(0.0, 1.0) : 0.0;
             return LinearProgressIndicator(
               value: value,
               minHeight: 2,

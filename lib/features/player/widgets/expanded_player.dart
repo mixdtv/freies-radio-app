@@ -116,7 +116,13 @@ class ExpandedPlayer extends StatelessWidget {
                       _SeekableProgressBar(
                           player: player,
                           isDark: isDark,
-                          textColor: textColor),
+                          textColor: textColor,
+                          programDuration: isArchive
+                              ? playerState.currentArchiveProgram!.end
+                                  .difference(playerState.currentArchiveProgram!.start)
+                                  .inSeconds
+                                  .toDouble()
+                              : null),
 
                     if (isLive && timelineState.activeEpg.id.isEmpty)
                       const SizedBox(height: 48),
@@ -414,11 +420,15 @@ class _SeekableProgressBar extends StatefulWidget {
   final MediaPlayer player;
   final bool isDark;
   final Color textColor;
+  /// If set, use this as the total duration (in seconds) instead of player.duration.
+  /// Used for archive playback to show the EPG program length.
+  final double? programDuration;
 
   const _SeekableProgressBar({
     required this.player,
     required this.isDark,
     required this.textColor,
+    this.programDuration,
   });
 
   @override
@@ -461,7 +471,8 @@ class _SeekableProgressBarState extends State<_SeekableProgressBar> {
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = _duration > 0 ? _duration : 1.0;
+    final effectiveDuration = widget.programDuration ?? _duration;
+    final maxValue = effectiveDuration > 0 ? effectiveDuration : 1.0;
     final currentValue =
         (_isDragging ? _dragValue : _position).clamp(0.0, maxValue);
 
@@ -606,16 +617,28 @@ class _TransportControlsState extends State<_TransportControls> {
   }
 
   void _skipForward() {
-    final newPos = widget.player.position.value + 15;
-    final maxPos = widget.player.duration.value;
-    final clamped = newPos > maxPos ? maxPos : newPos;
-    widget.player.seek(Duration(milliseconds: (clamped * 1000).toInt()));
+    if (widget.isLive) {
+      // Live HLS: let just_audio handle DVR buffer bounds
+      final newPos = widget.player.position.value + 15;
+      widget.player.seek(Duration(milliseconds: (newPos * 1000).toInt()));
+    } else {
+      final newPos = widget.player.position.value + 15;
+      final maxPos = widget.player.duration.value;
+      final clamped = newPos > maxPos ? maxPos : newPos;
+      widget.player.seek(Duration(milliseconds: (clamped * 1000).toInt()));
+    }
   }
 
   void _skipBackward() {
-    final newPos = widget.player.position.value - 15;
-    final clamped = newPos < 0 ? 0.0 : newPos;
-    widget.player.seek(Duration(milliseconds: (clamped * 1000).toInt()));
+    if (widget.isLive) {
+      // Live HLS: let just_audio handle DVR buffer bounds
+      final newPos = (widget.player.position.value - 15).clamp(0.0, double.infinity);
+      widget.player.seek(Duration(milliseconds: (newPos * 1000).toInt()));
+    } else {
+      final newPos = widget.player.position.value - 15;
+      final clamped = newPos < 0 ? 0.0 : newPos;
+      widget.player.seek(Duration(milliseconds: (clamped * 1000).toInt()));
+    }
   }
 
   @override
