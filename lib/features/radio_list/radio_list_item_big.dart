@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:radiozeit/app/widgets/shimmer.dart';
 import 'package:radiozeit/data/model/radio.dart';
+import 'package:radiozeit/utils/extensions.dart';
 
 class RadioListItemBig extends StatelessWidget {
   final AppRadio radio;
@@ -39,7 +40,7 @@ class RadioListItemBig extends StatelessWidget {
                   height: 126,
                   clipBehavior: Clip.hardEdge,
                   decoration: BoxDecoration(
-                    //  color: Theme.of(context).colorScheme.onBackground,
+                      color: CustomColor.parseCss(radio.iconColor) ?? Theme.of(context).colorScheme.onSurface,
                       borderRadius: BorderRadius.circular(4)
                   ),
                   child: CachedNetworkImage(

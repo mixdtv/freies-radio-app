@@ -1,76 +1,82 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:radiozeit/app/bottom_navigation/bottom_navigation_cubit.dart';
-import 'package:radiozeit/app/bottom_navigation/menu_config.dart';
-import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/data/model/podcast.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/player/media_player.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
-import 'package:radiozeit/features/player/widgets/play_button.dart';
-import 'package:radiozeit/features/radio_list/radio_list_page.dart';
-import 'package:radiozeit/features/transcript/radio_transcript_page.dart';
-import 'package:radiozeit/utils/colors.dart';
+import 'package:radiozeit/features/player/widgets/expanded_player.dart';
+import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 
+/// Compact mini player bar displayed at the bottom of the app.
+///
+/// Shows: thin progress indicator + show/episode title + circular play button.
+/// Tapping the text area opens the full-screen [ExpandedPlayer].
+/// Adapts display and behavior to the current content type (live/podcast/archive).
 class PlayerControls extends StatelessWidget {
   final RadioEpg activeProgram;
   final AppRadio? selectedRadio;
+  final int progress;
 
-  const PlayerControls({super.key, required this.activeProgram, this.selectedRadio});
+  const PlayerControls({
+    super.key,
+    required this.activeProgram,
+    this.selectedRadio,
+    required this.progress,
+  });
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<PlayerCubit, PlayerCubitState>(
       builder: (context, playerState) {
-        final podcastEpisode = playerState.currentPodcastEpisode;
-        final archiveProgram = playerState.currentArchiveProgram;
-        final bool isPodcastPlaying = podcastEpisode != null;
-        final bool isArchivePlaying = archiveProgram != null;
+        final isLive = playerState.isPlayingLive;
+        final isPodcast = playerState.isPlayingPodcast;
+        final isArchive = playerState.isPlayingArchive;
+        final player = context.read<PlayerCubit>().player;
 
-        TextTheme textTheme = Theme.of(context).textTheme;
         bool isDark = Theme.of(context).brightness == Brightness.dark;
-        MediaPlayer player = context.read<PlayerCubit>().player;
+        TextTheme textTheme = Theme.of(context).textTheme;
 
-        return Container(
-          height: 122,
-          child: Stack(
+        return SizedBox(
+          height: 60,
+          child: Column(
             children: [
-              Positioned(
-                left: 16,
-                right: isDark ? 100 : 104,
-                top: 0,
-                bottom: 0,
-                child: GestureDetector(
-                  onTap: () {
-                    if(selectedRadio != null && !isPodcastPlaying && !isArchivePlaying) {
-                      if(GoRouterState.of(context).fullPath == RadioListPage.path) {
-                        context.read<BottomNavigationCubit>().openMenu(true);
-                        context.push(MenuConfig.getDefaultPagePath());
-                      } else {
-                        context.replace(MenuConfig.getDefaultPagePath());
-                        context.read<BottomNavigationCubit>().toPage(MenuConfig.getDefaultPageIndex());
-                      }
-                    }
-                  },
-                  child: isArchivePlaying
-                    ? _buildArchiveInfo(context, archiveProgram, textTheme, isDark)
-                    : isPodcastPlaying
-                      ? _buildPodcastInfo(context, podcastEpisode, textTheme, isDark)
-                      : _buildRadioInfo(context, activeProgram, selectedRadio, textTheme, isDark),
+              // Thin progress indicator at top
+              _buildProgressBar(context, player, isLive, isDark),
+              // Content row
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      // Tappable text area -> opens expanded player
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _openExpandedPlayer(context),
+                          child: isArchive
+                              ? _buildArchiveText(
+                                  playerState.currentArchiveProgram!,
+                                  textTheme)
+                              : isPodcast
+                                  ? _buildPodcastText(
+                                      playerState.currentPodcastEpisode!,
+                                      textTheme)
+                                  : _buildLiveText(textTheme),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Play/Pause circular button
+                      _MiniPlayButton(
+                        player: player,
+                        isLive: isLive,
+                        isDark: isDark,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              Positioned(
-                  top: 0,
-                  right: 0,
-                  child: _PlayButtonWrapper(
-                    player: player,
-                    isPodcast: isPodcastPlaying,
-                    isArchive: isArchivePlaying,
-                  )
-              )
             ],
           ),
         );
@@ -78,116 +84,168 @@ class PlayerControls extends StatelessWidget {
     );
   }
 
-  Widget _buildRadioInfo(BuildContext context, RadioEpg activeProgram, AppRadio? selectedRadio, TextTheme textTheme, bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(activeProgram.id.isNotEmpty ? activeProgram.subheadline :"Live",
-            style: textTheme.bodyLarge?.copyWith(
-                fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-                color: textTheme.bodyLarge?.color?.withOpacity(0.6))
+  Widget _buildProgressBar(
+      BuildContext context, MediaPlayer player, bool isLive, bool isDark) {
+    if (isLive) {
+      return LinearProgressIndicator(
+        value: progress / 100,
+        minHeight: 2,
+        backgroundColor: isDark
+            ? Colors.white.withOpacity(0.08)
+            : Colors.black.withOpacity(0.08),
+        valueColor: AlwaysStoppedAnimation(
+          isDark
+              ? Colors.white.withOpacity(0.5)
+              : Colors.black.withOpacity(0.5),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(activeProgram.id.isNotEmpty ? activeProgram.title : selectedRadio?.name ?? "",style: textTheme.titleLarge,),
-        ),
-        Text(activeProgram.id.isNotEmpty ? activeProgram.hosts.join(" ") : selectedRadio?.tags.join(", ") ?? "",
-            maxLines: 2,
-            style: textTheme.bodyLarge?.copyWith(
-                fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-                color: textTheme.bodyLarge?.color?.withOpacity(0.6))
-        ),
-      ],
+      );
+    }
+
+    // Podcast / Archive: listen to position and duration
+    return ValueListenableBuilder<double>(
+      valueListenable: player.position,
+      builder: (ctx, pos, _) {
+        return ValueListenableBuilder<double>(
+          valueListenable: player.duration,
+          builder: (ctx, dur, _) {
+            final value = dur > 0 ? (pos / dur).clamp(0.0, 1.0) : 0.0;
+            return LinearProgressIndicator(
+              value: value,
+              minHeight: 2,
+              backgroundColor: isDark
+                  ? Colors.white.withOpacity(0.08)
+                  : Colors.black.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation(
+                isDark
+                    ? Colors.white.withOpacity(0.5)
+                    : Colors.black.withOpacity(0.5),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
-  Widget _buildPodcastInfo(BuildContext context, PodcastEpisode episode, TextTheme textTheme, bool isDark) {
+  Widget _buildLiveText(TextTheme textTheme) {
+    final hasEpg = activeProgram.id.isNotEmpty;
+    final subtitle = hasEpg ? activeProgram.subheadline : 'Live';
+    final title = hasEpg ? activeProgram.title : (selectedRadio?.name ?? '');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Podcast",
-            style: textTheme.bodyLarge?.copyWith(
-                fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-                color: textTheme.bodyLarge?.color?.withOpacity(0.6))
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            episode.title,
-            style: textTheme.titleLarge,
+        if (subtitle.isNotEmpty)
+          Text(
+            subtitle,
+            style: textTheme.bodySmall?.copyWith(
+              color: textTheme.bodySmall?.color?.withOpacity(0.6),
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-        ),
+        const SizedBox(height: 2),
         Text(
-          episode.pubDate != null
-            ? DateFormat('MMM d, yyyy').format(episode.pubDate!)
-            : episode.description,
-          maxLines: 2,
+          title,
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: textTheme.bodyLarge?.copyWith(
-              fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-              color: textTheme.bodyLarge?.color?.withOpacity(0.6))
         ),
       ],
     );
   }
 
-  Widget _buildArchiveInfo(BuildContext context, RadioEpg program, TextTheme textTheme, bool isDark) {
-    // Format the time range for display
-    final startTime = DateFormat('HH:mm').format(program.start);
-    final endTime = DateFormat('HH:mm').format(program.end);
+  Widget _buildPodcastText(PodcastEpisode episode, TextTheme textTheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Podcast',
+          style: textTheme.bodySmall?.copyWith(
+            color: textTheme.bodySmall?.color?.withOpacity(0.6),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          episode.title,
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildArchiveText(RadioEpg program, TextTheme textTheme) {
     final dateStr = DateFormat('d. MMM').format(program.start);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Archiv · $dateStr",
-            style: textTheme.bodyLarge?.copyWith(
-                fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-                color: textTheme.bodyLarge?.color?.withOpacity(0.6))
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            program.title,
-            style: textTheme.titleLarge,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
         Text(
-          "$startTime – $endTime · ${program.subheadline}",
-          maxLines: 2,
+          'Archiv · $dateStr',
+          style: textTheme.bodySmall?.copyWith(
+            color: textTheme.bodySmall?.color?.withOpacity(0.6),
+          ),
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: textTheme.bodyLarge?.copyWith(
-              fontFamily: isDark ? AppStyle.fontInter : AppStyle.fontDMMono,
-              color: textTheme.bodyLarge?.color?.withOpacity(0.6))
+        ),
+        const SizedBox(height: 2),
+        Text(
+          program.title,
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
   }
+
+  void _openExpandedPlayer(BuildContext context) {
+    final playerCubit = context.read<PlayerCubit>();
+    final timelineCubit = context.read<TimeLineCubit>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: playerCubit),
+            BlocProvider.value(value: timelineCubit),
+          ],
+          child: const ExpandedPlayer(),
+        );
+      },
+    );
+  }
 }
 
-class _PlayButtonWrapper extends StatefulWidget {
+/// Compact circular play/pause button for the mini player.
+/// Handles loading, playing, and stopped states with correct
+/// stop vs pause behavior per content type.
+class _MiniPlayButton extends StatefulWidget {
   final MediaPlayer player;
-  final bool isPodcast;
-  final bool isArchive;
+  final bool isLive;
+  final bool isDark;
 
-  const _PlayButtonWrapper({
+  const _MiniPlayButton({
     required this.player,
-    required this.isPodcast,
-    this.isArchive = false,
+    required this.isLive,
+    required this.isDark,
   });
 
   @override
-  State<_PlayButtonWrapper> createState() => _PlayButtonWrapperState();
+  State<_MiniPlayButton> createState() => _MiniPlayButtonState();
 }
 
-class _PlayButtonWrapperState extends State<_PlayButtonWrapper> {
+class _MiniPlayButtonState extends State<_MiniPlayButton> {
   bool _isPlaying = false;
   bool _isLoading = false;
 
@@ -208,46 +266,58 @@ class _PlayButtonWrapperState extends State<_PlayButtonWrapper> {
   }
 
   void _onPlayingChanged() {
-    if (mounted) {
-      setState(() {
-        _isPlaying = widget.player.isPlaying.value;
-      });
-    }
+    if (mounted) setState(() => _isPlaying = widget.player.isPlaying.value);
   }
 
   void _onLoadingChanged() {
-    if (mounted) {
-      setState(() {
-        _isLoading = widget.player.isLoading.value;
-      });
+    if (mounted) setState(() => _isLoading = widget.player.isLoading.value);
+  }
+
+  void _onTap() {
+    if (_isPlaying) {
+      if (widget.isLive) {
+        widget.player.stop();
+      } else {
+        widget.player.pause();
+      }
+    } else {
+      if (!widget.isLive && widget.player.isPause()) {
+        widget.player.resume();
+      } else {
+        widget.player.play();
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Archive and podcast both use pause/resume, live radio uses stop
-    final bool usesPauseResume = widget.isPodcast || widget.isArchive;
-
-    return PlayButton(
-      onClick: () {
-        print("player.isPlaying.value ${widget.player.isPlaying.value}, isPodcast: ${widget.isPodcast}, isArchive: ${widget.isArchive}");
-        if (widget.player.isPlaying.value) {
-          if (usesPauseResume) {
-            widget.player.pause();
-          } else {
-            widget.player.stop();
-          }
-        } else {
-          if (usesPauseResume && widget.player.isPause()) {
-            widget.player.resume();
-          } else {
-            widget.player.play();
-          }
-        }
-      },
-      isPlay: _isPlaying,
-      isLoading: _isLoading,
-      isPodcast: usesPauseResume,
+    return GestureDetector(
+      onTap: _isLoading ? null : _onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.isDark ? Colors.white : Colors.black,
+        ),
+        child: _isLoading
+            ? Padding(
+                padding: const EdgeInsets.all(10),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(
+                    widget.isDark ? Colors.black : Colors.white,
+                  ),
+                ),
+              )
+            : Icon(
+                _isPlaying
+                    ? (widget.isLive ? Icons.stop : Icons.pause)
+                    : Icons.play_arrow,
+                color: widget.isDark ? Colors.black : Colors.white,
+                size: 22,
+              ),
+      ),
     );
   }
 }

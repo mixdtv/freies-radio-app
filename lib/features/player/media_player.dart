@@ -338,12 +338,11 @@ class MediaPlayer extends BaseAudioHandler {
        }
      }
 
-     // Update loading state based on processing state AND playing state
+     // Update loading state based on processing state
      if(event.processingState == ProcessingState.buffering ||
         event.processingState == ProcessingState.loading) {
        isLoading.value = true;
-     } else if(event.processingState == ProcessingState.ready && _player.playing) {
-       // Only set loading to false when we're ready AND actually playing
+     } else if(event.processingState == ProcessingState.ready) {
        isLoading.value = false;
      }
 
