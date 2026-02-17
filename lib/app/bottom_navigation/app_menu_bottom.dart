@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:radiozeit/app/bottom_navigation/bottom_navigation_cubit.dart';
 import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/radio.dart';
-import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/player/widgets/player_controls.dart';
 import 'package:radiozeit/features/player/widgets/player_progress.dart';
@@ -17,7 +15,6 @@ import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/features/timeline/radio_timeline_page.dart';
 import 'package:radiozeit/features/transcript/radio_transcript_page.dart';
 import 'package:radiozeit/features/visual/radio_visual_page.dart';
-import 'package:radiozeit/utils/adaptive/form_factor.dart';
 import 'package:radiozeit/utils/adaptive/screen_type.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/l10n/app_localizations.dart';
@@ -35,7 +32,7 @@ class AppMenuBottom extends StatelessWidget {
       return SafeArea(
         top: false,
         child: SizedBox(
-          height: isShow ? 122 + 4 + 49 : 122 + 4 + 6,
+          height: isShow ? 60 + 4 + 49 : 60 + 4 + 6,
           child: Stack(
             fit: StackFit.loose,
             children: [
@@ -56,6 +53,7 @@ class AppMenuBottom extends StatelessWidget {
                           return PlayerControls(
                             activeProgram: state.activeEpg ,
                             selectedRadio: state.activeRadio,
+                            progress: state.progress,
                           );
                         },
                       ),

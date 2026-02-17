@@ -7,11 +7,12 @@ import 'package:radiozeit/app/widgets/shimmer.dart';
 import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
+import 'package:radiozeit/features/radio_about/radio_description.dart';
+import 'package:radiozeit/features/radio_about/top_songs.dart';
 import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/features/timeline/timeline_list_item.dart';
 import 'package:radiozeit/features/timeline/timeline_list_item_loading.dart';
-import 'package:radiozeit/l10n/app_localizations.dart';
 import 'package:radiozeit/utils/app_logger.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -109,16 +110,28 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                       itemBuilder: (context, index) => const TimelineListItemLoading(),),
                   );
                 }
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Text(
-                      AppLocalizations.of(context)!.timeline_no_shows,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.6),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                // No EPG data — show About content inline
+                final radio = context.select((PlayerCubit cubit) => cubit.state.selectedRadio);
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (radio?.icon != null && radio!.icon.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: Image.network(
+                            radio.icon,
+                            width: 240,
+                            height: 80,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.centerLeft,
+                          ),
+                        ),
+                      RadioDescription(text: radio?.desc ?? ''),
+                      const SizedBox(height: 38),
+                      TopSongs(songs: radio?.topSongs ?? []),
+                    ],
                   ),
                 );
               }
