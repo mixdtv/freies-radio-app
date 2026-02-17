@@ -26,6 +26,11 @@ class MediaPlayer extends BaseAudioHandler {
   String? _archivePlaylistUrl;
   Map<String, String>? _archiveHeaders;
 
+  /// Cumulative duration of all segments before the current one (for archive playback).
+  double _segmentOffset = 0;
+  /// Duration of each segment in seconds (for archive playback).
+  List<double> _segmentDurations = [];
+
   MediaPlayer() {
 
 
@@ -38,7 +43,21 @@ class MediaPlayer extends BaseAudioHandler {
 
 
     _player.positionStream.listen((value) {
-      position.value = value.inMilliseconds / 1000;
+      if (_playbackType == PlaybackType.archive) {
+        position.value = _segmentOffset + value.inMilliseconds / 1000;
+      } else {
+        position.value = value.inMilliseconds / 1000;
+      }
+    });
+
+    _player.currentIndexStream.listen((index) {
+      if (_playbackType == PlaybackType.archive && index != null && _segmentDurations.isNotEmpty) {
+        double offset = 0;
+        for (int i = 0; i < index && i < _segmentDurations.length; i++) {
+          offset += _segmentDurations[i];
+        }
+        _segmentOffset = offset;
+      }
     });
 
 
@@ -129,21 +148,25 @@ class MediaPlayer extends BaseAudioHandler {
       isLoading.value = true;
       _notificationBuffering();
 
-      // Fetch the playlist to get segment URLs
+      // Fetch the playlist to get segment URLs and durations
       // iOS HLS doesn't support standard M4A, so we use ConcatenatingAudioSource
-      final segmentUrls = await _fetchSegmentUrls(url, headers);
-      if (segmentUrls.isEmpty) {
+      final segments = await _fetchSegments(url, headers);
+      if (segments.isEmpty) {
         _log.warning('No segments found in playlist');
         isLoading.value = false;
         _notificationStop();
         return;
       }
 
-      _log.info('Loading ${segmentUrls.length} segments via ConcatenatingAudioSource');
+      _log.info('Loading ${segments.length} segments via ConcatenatingAudioSource');
+
+      // Store segment durations for cumulative position tracking
+      _segmentDurations = segments.map((s) => s.duration).toList();
+      _segmentOffset = 0;
 
       // Build concatenating source from segment URLs with auth headers
-      final audioSources = segmentUrls.map((segmentUrl) =>
-        AudioSource.uri(Uri.parse(segmentUrl), headers: headers)
+      final audioSources = segments.map((s) =>
+        AudioSource.uri(Uri.parse(s.url), headers: headers)
       ).toList();
 
       final playlist = ConcatenatingAudioSource(children: audioSources);
@@ -175,7 +198,30 @@ class MediaPlayer extends BaseAudioHandler {
 
   @override
   seek(Duration position) async {
-    await _player.seek(position);
+    if (_playbackType == PlaybackType.archive && _segmentDurations.isNotEmpty) {
+      // Convert absolute position to segment index + local offset
+      double targetSec = position.inMilliseconds / 1000;
+      double accumulated = 0;
+      for (int i = 0; i < _segmentDurations.length; i++) {
+        if (accumulated + _segmentDurations[i] > targetSec) {
+          final localOffset = targetSec - accumulated;
+          await _player.seek(
+            Duration(milliseconds: (localOffset * 1000).toInt()),
+            index: i,
+          );
+          return;
+        }
+        accumulated += _segmentDurations[i];
+      }
+      // Past the end — seek to last segment
+      final lastIndex = _segmentDurations.length - 1;
+      await _player.seek(
+        Duration(milliseconds: (_segmentDurations[lastIndex] * 1000).toInt()),
+        index: lastIndex,
+      );
+    } else {
+      await _player.seek(position);
+    }
   }
 
   @override
@@ -338,20 +384,20 @@ class MediaPlayer extends BaseAudioHandler {
        }
      }
 
-     // Update loading state based on processing state AND playing state
+     // Update loading state based on processing state
      if(event.processingState == ProcessingState.buffering ||
         event.processingState == ProcessingState.loading) {
        isLoading.value = true;
-     } else if(event.processingState == ProcessingState.ready && _player.playing) {
-       // Only set loading to false when we're ready AND actually playing
+     } else if(event.processingState == ProcessingState.ready) {
        isLoading.value = false;
      }
 
      isPlaying.value = _player.playing;
   }
 
-  /// Fetch segment URLs from an HLS playlist
-  Future<List<String>> _fetchSegmentUrls(String playlistUrl, Map<String, String> headers) async {
+  /// Fetch segment URLs and durations from an HLS playlist.
+  /// Returns a list of (url, duration) pairs.
+  Future<List<({String url, double duration})>> _fetchSegments(String playlistUrl, Map<String, String> headers) async {
     try {
       final response = await http.get(
         Uri.parse(playlistUrl),
@@ -364,19 +410,24 @@ class MediaPlayer extends BaseAudioHandler {
       }
 
       final lines = response.body.split('\n');
-      final segmentUrls = <String>[];
+      final segments = <({String url, double duration})>[];
+      double nextDuration = 0;
 
       for (final line in lines) {
         final trimmed = line.trim();
-        // Segment URLs are lines that don't start with # and end with audio extension
-        if (trimmed.isNotEmpty &&
+        if (trimmed.startsWith('#EXTINF:')) {
+          // Parse duration from #EXTINF:5.015511,
+          final durationStr = trimmed.substring(8).split(',').first;
+          nextDuration = double.tryParse(durationStr) ?? 0;
+        } else if (trimmed.isNotEmpty &&
             !trimmed.startsWith('#') &&
             (trimmed.endsWith('.m4a') || trimmed.endsWith('.aac') || trimmed.endsWith('.ts'))) {
-          segmentUrls.add(trimmed);
+          segments.add((url: trimmed, duration: nextDuration));
+          nextDuration = 0;
         }
       }
 
-      return segmentUrls;
+      return segments;
     } catch (e, st) {
       _log.severe('Error fetching playlist', e, st);
       return [];

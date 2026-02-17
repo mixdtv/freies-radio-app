@@ -18,6 +18,7 @@ import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/features/radio_list/radio_list_search_page.dart';
 import 'package:radiozeit/features/timeline/radio_timeline_page.dart';
 import 'package:radiozeit/features/transcript/radio_transcript_page.dart';
+import 'package:radiozeit/features/deep_link/deep_link_page.dart';
 import 'package:radiozeit/features/visual/radio_visual_page.dart';
 import 'package:radiozeit/features/visual/visual_cubit.dart';
 
@@ -29,6 +30,7 @@ class AppNavigation {
   }) {
       final router = GoRouter(
           initialLocation: initPage,
+          debugLogDiagnostics: true,
           routes: <RouteBase>[
             GoRoute(
               path: LocationRequestPage.path,
@@ -65,6 +67,14 @@ class AppNavigation {
                   return  BlocProvider(
                       create: (context) => RadioListCityCubit(state.extra as LocationCity),
                       child: const PageRadioListCity());
+                },
+              ),
+
+              GoRoute(
+                path: DeepLinkPage.path,
+                builder: (BuildContext context, GoRouterState state) {
+                  final prefix = state.pathParameters['stationPrefix'] ?? '';
+                  return DeepLinkPage(stationPrefix: prefix);
                 },
               ),
 

@@ -172,9 +172,19 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
               }
               List<String> favoriteList = context.select((RadioFavoriteCubit bloc) => bloc.state.favoriteList);
 
+              // Sort favorites to the top, preserving original order within each group
+              final sortedList = List<AppRadio>.from(cubit.state.radioList)
+                ..sort((a, b) {
+                  final aFav = favoriteList.contains(a.id);
+                  final bFav = favoriteList.contains(b.id);
+                  if (aFav && !bFav) return -1;
+                  if (!aFav && bFav) return 1;
+                  return 0;
+                });
+
               if(ScreenType.getFormFactor(context) == ScreenType.big) {
                 return RadioListBig(
-                  list: cubit.state.radioList,
+                  list: sortedList,
                   error: cubit.state.loadingError,
                   isLoading: cubit.state.isLoading,
                   reload: () => cubit.startLoadRadio(),
@@ -184,7 +194,7 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
                 );
               }
               return RadioList(
-                list: cubit.state.radioList,
+                list: sortedList,
                 error: cubit.state.loadingError,
                 isLoading: cubit.state.isLoading,
                 reload: () => cubit.startLoadRadio(),
