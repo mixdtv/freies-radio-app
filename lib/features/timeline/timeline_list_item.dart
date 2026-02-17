@@ -2,10 +2,12 @@ import 'dart:math';
 
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
+import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
@@ -42,12 +44,29 @@ class _TimelineListItemState extends State<TimelineListItem> {
   bool get isTappable => (AppConfig.enableArchivePlayback && canPlayArchive) || widget.isActive;
 
   void _addToCalendar() async {
+    final stationPrefix = context.read<PlayerCubit>().state.selectedRadio?.prefix ?? '';
+    final deepLink = stationPrefix.isNotEmpty
+        ? 'freiesradio:///show/$stationPrefix'
+        : '';
+
+    // Build description with deep link
+    final desc = StringBuffer(widget.program.subheadline);
+    if (widget.program.desc.isNotEmpty) {
+      desc.write('\n\n${widget.program.desc}');
+    }
+    if (deepLink.isNotEmpty) {
+      desc.write('\n\n$deepLink');
+    }
+
     final event = Event(
       title: widget.program.title,
-      description: '${widget.program.subheadline}${widget.program.desc.isNotEmpty ? '\n\n${widget.program.desc}' : ''}',
+      description: desc.toString(),
       location: widget.stationName,
       startDate: widget.program.start,
       endDate: widget.program.end,
+      iosParams: deepLink.isNotEmpty
+          ? IOSParams(url: deepLink)
+          : const IOSParams(),
     );
     debugPrint('Adding to calendar: ${widget.program.title} at ${widget.program.start}');
     try {
