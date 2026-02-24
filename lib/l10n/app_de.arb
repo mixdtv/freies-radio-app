@@ -17,7 +17,7 @@
     "splash_text_connector": "aus",
     "splash_text_location": "Berlin und Brandenburg",
     "splash_button_start": "Lass uns loslegen",
-    "input_placeholder_search_city": "Sender, Stadt...",
+    "input_placeholder_search_city": "Sender, Stadt, Sendung...",
     "button_location_on": "Standort: Ein",
     "button_location_off": "Standort: Aus",
     "title_error": "Fehler",

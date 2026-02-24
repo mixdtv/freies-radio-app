@@ -17,7 +17,7 @@
     "splash_text_connector":"from",
     "splash_text_location":"Berlin and Brandenburg",
     "splash_button_start":"Let’s start",
-    "input_placeholder_search_city":"Station, city...",
+    "input_placeholder_search_city":"Station, city, program...",
     "button_location_on":"Location: On",
     "button_location_off":"Location: Off",
     "title_error":"Error",

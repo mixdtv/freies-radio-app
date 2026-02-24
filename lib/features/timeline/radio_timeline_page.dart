@@ -7,8 +7,7 @@ import 'package:radiozeit/app/widgets/shimmer.dart';
 import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
-import 'package:radiozeit/features/radio_about/radio_description.dart';
-import 'package:radiozeit/features/radio_about/top_songs.dart';
+import 'package:radiozeit/features/radio_about/radio_about_page.dart';
 import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/features/timeline/timeline_list_item.dart';
@@ -55,16 +54,20 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
       });
       return;
     }
-    var state = context.read<TimeLineCubit>().state;
-    _log.fine('activeEpg.id: ${state.activeEpg.id}, allEpg.length: ${state.allEpg.length}');
-    if(state.activeEpg.id.isNotEmpty) {
-      int index = state.allEpg.indexWhere((e) => e.id == state.activeEpg.id);
+    var cubit = context.read<TimeLineCubit>();
+    var state = cubit.state;
+    // Prefer scrollToId (from search) over activeEpg
+    final targetId = state.scrollToId ?? state.activeEpg.id;
+    _log.fine('targetId: $targetId, activeEpg.id: ${state.activeEpg.id}, allEpg.length: ${state.allEpg.length}');
+    if(targetId.isNotEmpty) {
+      int index = state.allEpg.indexWhere((e) => e.id == targetId);
       _log.fine('Found index: $index');
       if(index >= 0) {
         isScrolled = true;
         try {
           itemScrollController.jumpTo(index: index);
           _log.fine('Scrolled to index: $index');
+          if (state.scrollToId != null) cubit.clearScrollTarget();
         } catch (e) {
           _log.warning('Failed to scroll: $e, retrying...');
           isScrolled = false;
@@ -82,14 +85,44 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<TimeLineCubit, TimeLineState>(
-      listenWhen: (p, c) => p.activeEpg.id != c.activeEpg.id,
-      listener: (context, state) {
-        _log.fine('BlocListener triggered, isScrolled: $isScrolled, activeEpg: ${state.activeEpg.id}');
-        if(!isScrolled) {
-          _scrollToCurrent();
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<TimeLineCubit, TimeLineState>(
+          listenWhen: (p, c) => p.activeEpg.id != c.activeEpg.id,
+          listener: (context, state) {
+            _log.fine('BlocListener triggered, isScrolled: $isScrolled, activeEpg: ${state.activeEpg.id}');
+            if(!isScrolled) {
+              _scrollToCurrent();
+            }
+          },
+        ),
+        // Scroll to searched program when data loads with a pending scroll target
+        BlocListener<TimeLineCubit, TimeLineState>(
+          listenWhen: (p, c) =>
+              c.scrollToId != null &&
+              (p.scrollToId != c.scrollToId || p.allEpg.length != c.allEpg.length),
+          listener: (context, state) {
+            _log.fine('Scroll target pending: ${state.scrollToId}, allEpg: ${state.allEpg.length}');
+            isScrolled = false;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !isScrolled) {
+                _scrollToCurrent();
+              }
+            });
+          },
+        ),
+        // Redirect to About page if station has no program data
+        BlocListener<TimeLineCubit, TimeLineState>(
+          listenWhen: (p, c) => p.isLoading && !c.isLoading,
+          listener: (context, state) {
+            if (state.allEpg.isEmpty && !state.isLoading) {
+              _log.info('No EPG data, navigating to About page');
+              context.read<BottomNavigationCubit>().toPage(4);
+              context.pushReplacement(RadioAboutPage.path);
+            }
+          },
+        ),
+      ],
       child: ColoredBox(
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Column(
@@ -110,30 +143,8 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                       itemBuilder: (context, index) => const TimelineListItemLoading(),),
                   );
                 }
-                // No EPG data — show About content inline
-                final radio = context.select((PlayerCubit cubit) => cubit.state.selectedRadio);
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (radio?.icon != null && radio!.icon.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: Image.network(
-                            radio.icon,
-                            width: 240,
-                            height: 80,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.centerLeft,
-                          ),
-                        ),
-                      RadioDescription(text: radio?.desc ?? ''),
-                      const SizedBox(height: 38),
-                      TopSongs(songs: radio?.topSongs ?? []),
-                    ],
-                  ),
-                );
+                // BlocListener will redirect to About page
+                return const SizedBox.shrink();
               }
 
               return RefreshIndicator(

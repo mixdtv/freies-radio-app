@@ -173,13 +173,43 @@ class Repository {
 
   Future<EpgResponseResponse> loadEpg({
     required String epgSlug,
-    required int limit,
-    required int skip,
+    DateTime? from,
+    DateTime? to,
     CancelToken? cancelToken,
   }) {
+    final Map<String, dynamic> data = {};
+    if (from != null) {
+      data['from'] = from.toUtc().toIso8601String();
+    }
+    if (to != null) {
+      data['to'] = to.toUtc().toIso8601String();
+    }
 
-    return api.get(patch: "${AppConfig.epgBaseUrl}$epgSlug")
-        .then((value) => EpgResponseResponse(value));
+    return api.get(
+      patch: "${AppConfig.epgBaseUrl}$epgSlug",
+      data: data,
+      cancelToken: cancelToken,
+    ).then((value) => EpgResponseResponse(value));
+  }
+
+  Future<EpgResponseResponse> searchEpg({
+    required String query,
+    DateTime? from,
+    DateTime? to,
+    CancelToken? cancelToken,
+  }) {
+    final Map<String, dynamic> data = {"q": query, "limit": 20};
+    if (from != null) {
+      data['from'] = from.toUtc().toIso8601String();
+    }
+    if (to != null) {
+      data['to'] = to.toUtc().toIso8601String();
+    }
+    return api.get(
+      patch: "${AppConfig.epgBaseUrl}search",
+      data: data,
+      cancelToken: cancelToken,
+    ).then((value) => EpgResponseResponse(value));
   }
 
   Future<LangListResponse> loadLangList({
