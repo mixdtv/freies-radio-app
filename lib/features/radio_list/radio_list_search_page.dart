@@ -7,6 +7,7 @@ import 'package:radiozeit/app/bottom_navigation/bottom_navigation_cubit.dart';
 import 'package:radiozeit/app/bottom_navigation/menu_config.dart';
 import 'package:radiozeit/app/widgets/input/input_search.dart';
 import 'package:radiozeit/data/model/radio.dart';
+import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/location/model/location_city.dart';
 import 'package:radiozeit/features/location/widgets/city_list.dart';
 import 'package:radiozeit/features/location/widgets/city_preview.dart';
@@ -51,9 +52,11 @@ class RadioSearchPage extends StatelessWidget {
               List<AppRadio> radioList = context.select((RadioListSearchCubit cubit) => cubit.state.radios);
               List<String> radioFavorites = context.select((RadioFavoriteCubit cubit) => cubit.state.favoriteList);
 
+              bool isProgramLoading = context.select((RadioListSearchCubit cubit) => cubit.state.isLoadingPrograms);
+              bool isProgramNotFound = context.select((RadioListSearchCubit cubit) => cubit.state.isProgramNotFound);
+              List<RadioEpg> programList = context.select((RadioListSearchCubit cubit) => cubit.state.programs);
 
-
-              if(!isCityLoading && !isRadioLoading && isCityNotFound && isRadioNotFound) {
+              if(!isCityLoading && !isRadioLoading && !isProgramLoading && isCityNotFound && isRadioNotFound && isProgramNotFound) {
                 return Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -89,6 +92,23 @@ class RadioSearchPage extends StatelessWidget {
                     )
                 );
               }
+              // Programs section (before stations for better visibility)
+              childs.add(_groupTitle(context, AppLocalizations.of(context)!.timeline));
+              if(!isProgramLoading && isProgramNotFound) {
+                childs.add(
+                    Center(
+                      child: Opacity(
+                          opacity: 0.3,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(AppLocalizations.of(context)!.stations_not_found,style: Theme.of(context).textTheme.bodyLarge,),
+                          )),
+                    )
+                );
+              } else {
+                childs.add(_programList(context, programList, isProgramLoading));
+              }
+
               childs.add(_groupTitle(context, AppLocalizations.of(context)!.stations));
 
               if(!isRadioLoading && isRadioNotFound) {
@@ -115,10 +135,7 @@ class RadioSearchPage extends StatelessWidget {
                   openRadio: (radio) => _openRadio(context,radio),
                 ));
               }
-              
-              
-              
-              
+
               return Expanded(child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,6 +175,59 @@ class RadioSearchPage extends StatelessWidget {
           fontWeight: FontWeight.w500
       ),),
     );
+  }
+
+  Widget _programList(BuildContext context, List<RadioEpg> programs, bool isLoading) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: programs.length,
+      itemBuilder: (context, index) {
+        final program = programs[index];
+        final timeStr = '${program.start.hour.toString().padLeft(2, '0')}:${program.start.minute.toString().padLeft(2, '0')}';
+        final dateStr = '${program.start.day}.${program.start.month}.';
+        return ListTile(
+          leading: Icon(Icons.radio, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.4)),
+          title: Text(program.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            '$dateStr $timeStr · ${program.subheadline}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+            ),
+          ),
+          onTap: () => _openProgram(context, program),
+        );
+      },
+    );
+  }
+
+  _openProgram(BuildContext context, RadioEpg program) {
+    // Find the matching station from the loaded radio list
+    final radioListCubit = context.read<RadioListCubit>();
+    final radio = radioListCubit.state.radioList.cast<AppRadio?>().firstWhere(
+      (r) => r!.epgPrefix.toLowerCase() == program.broadcasterId.toLowerCase()
+           || r.prefix.toLowerCase() == program.broadcasterId.toLowerCase(),
+      orElse: () => null,
+    );
+
+    if (radio == null) return;
+
+    context.read<BottomNavigationCubit>().openMenu(true);
+    context.read<PlayerCubit>().selectRadio(radio);
+    context.read<TimeLineCubit>().selectRadio(radio);
+    context.read<TimeLineCubit>().scrollToProgram(program.id);
+    if (radio.podcasts != null && radio.podcasts!.isNotEmpty) {
+      context.read<PodcastCubit>().preloadPodcasts(radio.podcasts!, radioName: radio.name);
+    }
+    context.push(MenuConfig.getDefaultPagePath());
   }
 
   _topBar(BuildContext context) {

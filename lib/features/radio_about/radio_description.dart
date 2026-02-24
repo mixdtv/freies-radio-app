@@ -39,7 +39,9 @@ class RadioDescription extends StatelessWidget {
           fontWeight: FontWeight.bold,
         ),
         "a": Style(
-          color: Theme.of(context).colorScheme.primary,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xff82B1FF)
+              : const Color(0xff1565C0),
         ),
       },
     );
