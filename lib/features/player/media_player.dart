@@ -282,15 +282,7 @@ class MediaPlayer extends BaseAudioHandler {
     try {
       isLoading.value = true;
       _notificationBuffering();
-      mediaDuration = await _player.setAudioSource(
-        AudioSource.uri(
-          Uri.parse(url),
-          headers: {
-            'User-Agent': 'FreiesRadioApp/1.0',
-            'Icy-MetaData': '1',
-          },
-        ),
-      );
+      mediaDuration = await _player.setUrl(url);
     } catch (e,st) {
       _log.severe('Error on setUrl', e, st);
       isLoading.value = false;
@@ -396,7 +388,7 @@ class MediaPlayer extends BaseAudioHandler {
      if(event.processingState == ProcessingState.buffering ||
         event.processingState == ProcessingState.loading) {
        isLoading.value = true;
-     } else if(event.processingState == ProcessingState.ready) {
+     } else if(event.processingState == ProcessingState.ready && _player.playing) {
        isLoading.value = false;
      }
 

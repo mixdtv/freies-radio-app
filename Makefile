@@ -1,9 +1,9 @@
 FLUTTER := .fvm/flutter_sdk/bin/flutter
 CONFIG ?= .env.json
 
-.PHONY: help clean get devices select-device \
+.PHONY: help clean get devices select-device bump \
 	android-debug android-release android-bundle android-deploy \
-	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa
+	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -12,6 +12,7 @@ help:
 	@echo "  get               Install dependencies"
 	@echo "  clean             Clean build artifacts"
 	@echo "  devices           List available devices"
+	@echo "  bump              Increment build number in pubspec.yaml"
 	@echo "  select-device     Select and save device for deploy targets"
 	@echo ""
 	@echo "Android:"
@@ -26,6 +27,7 @@ help:
 	@echo "  ios-deploy        Build and install debug app on device (requires DEVICE=<id>)"
 	@echo "  ios-deploy-release Build and install release app on device (requires DEVICE=<id>)"
 	@echo "  ios-ipa           Build IPA (App Store / TestFlight)"
+	@echo "  ios-publish       Build IPA and open archive in Xcode for distribution"
 	@echo ""
 	@echo "Options:"
 	@echo "  CONFIG            Config file for --dart-define-from-file (default: .env.json)"
@@ -83,5 +85,16 @@ ios-deploy:
 ios-deploy-release:
 	$(FLUTTER) run --release -d $(DEVICE) --dart-define-from-file=$(CONFIG)
 
+bump:
+	@current=$$(grep '^version:' pubspec.yaml | sed 's/version: *//'); \
+	name=$${current%%+*}; \
+	build=$${current##*+}; \
+	next=$$((build + 1)); \
+	sed -i '' "s/^version: .*/version: $$name+$$next/" pubspec.yaml; \
+	echo "Bumped version: $$name+$$build -> $$name+$$next"
+
 ios-ipa: get
 	$(FLUTTER) build ipa --release --dart-define-from-file=$(CONFIG)
+
+ios-publish: ios-ipa
+	open build/ios/archive/Runner.xcarchive
