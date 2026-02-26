@@ -78,6 +78,15 @@ class AppNavigation {
                 },
               ),
 
+              // Universal/App Links: https://freies-radio.radiozeit.de/app/show/<prefix>
+              GoRoute(
+                path: '/app/show/:stationPrefix',
+                builder: (BuildContext context, GoRouterState state) {
+                  final prefix = state.pathParameters['stationPrefix'] ?? '';
+                  return DeepLinkPage(stationPrefix: prefix);
+                },
+              ),
+
               GoRoute(
                 path: RadioListPage.path,
                 builder: (BuildContext context, GoRouterState state) {

@@ -43,6 +43,15 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="freiesradio"/>
             </intent-filter>
+            <!-- Verified App Links for calendar deep links -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https"
+                      android:host="freies-radio.radiozeit.de"
+                      android:pathPrefix="/app/show"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

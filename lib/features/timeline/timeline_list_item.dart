@@ -45,17 +45,17 @@ class _TimelineListItemState extends State<TimelineListItem> {
 
   void _addToCalendar() async {
     final stationPrefix = context.read<PlayerCubit>().state.selectedRadio?.prefix ?? '';
-    final deepLink = stationPrefix.isNotEmpty
-        ? 'freiesradio:///show/$stationPrefix'
+    final appLink = stationPrefix.isNotEmpty
+        ? 'https://freies-radio.radiozeit.de/app/show/$stationPrefix'
         : '';
 
-    // Build description with deep link
+    // Build description with app link
     final desc = StringBuffer(widget.program.subheadline);
     if (widget.program.desc.isNotEmpty) {
       desc.write('\n\n${widget.program.desc}');
     }
-    if (deepLink.isNotEmpty) {
-      desc.write('\n\n$deepLink');
+    if (appLink.isNotEmpty) {
+      desc.write('\n\nIn der Freies Radio App anhören:\n$appLink');
     }
 
     final event = Event(
@@ -64,8 +64,8 @@ class _TimelineListItemState extends State<TimelineListItem> {
       location: widget.stationName,
       startDate: widget.program.start,
       endDate: widget.program.end,
-      iosParams: deepLink.isNotEmpty
-          ? IOSParams(url: deepLink)
+      iosParams: appLink.isNotEmpty
+          ? IOSParams(url: appLink)
           : const IOSParams(),
     );
     debugPrint('Adding to calendar: ${widget.program.title} at ${widget.program.start}');
