@@ -10,6 +10,7 @@ import 'package:radiozeit/features/radio_about/top_songs.dart';
 import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/utils/adaptive/screen_type.dart';
 import 'package:radiozeit/utils/colors.dart';
+import 'package:radiozeit/utils/extensions.dart';
 
 class RadioAboutPage extends StatelessWidget {
   static const String path = "/RadioAboutPage";
@@ -38,12 +39,18 @@ class RadioAboutPage extends StatelessWidget {
                   Row(
                     mainAxisAlignment: isBigScreen ? MainAxisAlignment.center : MainAxisAlignment.start,
                     children: [
-                      CachedNetworkImage(
-                        imageUrl: radio?.icon ?? "",
-                          width: 240,
-                          height:80,
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: CustomColor.parseCss(radio?.iconColor ?? ''),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: CachedNetworkImage(
+                          imageUrl: radio?.icon ?? "",
+                          height: 72,
                           fit: BoxFit.contain,
-                        alignment: Alignment.centerLeft,
+                        ),
                       ),
                     ],
                   ),
