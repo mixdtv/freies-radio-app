@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:radiozeit/features/player/media_player.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
+import 'package:radiozeit/utils/extensions.dart';
 
 /// Full-screen expanded player view inspired by the DLF app.
 ///
@@ -177,15 +178,23 @@ class ExpandedPlayer extends StatelessWidget {
       return Icon(Icons.radio, size: 80, color: textColor.withOpacity(0.15));
     }
 
+    final bgColor = CustomColor.parseCss(playerState.selectedRadio?.iconColor ?? '');
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 48),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
-              Icon(Icons.radio, size: 80, color: textColor.withOpacity(0.15)),
+      child: Center(
+        child: Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          clipBehavior: Clip.hardEdge,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) =>
+                Icon(Icons.radio, size: 80, color: textColor.withOpacity(0.15)),
+          ),
         ),
       ),
     );
