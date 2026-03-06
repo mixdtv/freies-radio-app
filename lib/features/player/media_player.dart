@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 import 'package:audio_service/audio_service.dart';
@@ -25,6 +26,10 @@ class MediaPlayer extends BaseAudioHandler {
   PlaybackType _playbackType = PlaybackType.live;
   String? _archivePlaylistUrl;
   Map<String, String>? _archiveHeaders;
+
+  /// Exponential backoff state for stream restart
+  int _restartAttempts = 0;
+  static const int _maxRestartDelaySec = 300; // 5 minutes
 
   /// Cumulative duration of all segments before the current one (for archive playback).
   double _segmentOffset = 0;
@@ -87,34 +92,31 @@ class MediaPlayer extends BaseAudioHandler {
 
 
 
-  restartPlayer({int sec = 5}) {
+  restartPlayer() {
     restartTimer?.cancel();
-    if(sec == 0) {
-      _restartNow();
-    } else {
-      restartTimer = Timer(Duration(seconds: sec),() {
-        _restartNow();
-      },
-      );
-    }
-
-  }
-
-  _restartNow() {
     // Don't restart archives - they use session-based playback
     if (_playbackType == PlaybackType.archive) {
       _log.info('Skipping restart for archive playback');
       return;
     }
-    if(currentMedia != null) {
-      playMediaItem(currentMedia!);
-    }
+
+    final delaySec = min(5 * pow(2, _restartAttempts).toInt(), _maxRestartDelaySec);
+    _restartAttempts++;
+    _log.info('Scheduling restart in ${delaySec}s (attempt $_restartAttempts)');
+
+    restartTimer = Timer(Duration(seconds: delaySec), () {
+      if (currentMedia != null) {
+        playMediaItem(currentMedia!);
+      }
+    });
   }
 
 
   @override
   playMediaItem(MediaItem item) async {
     _playbackType = PlaybackType.live;
+    _restartAttempts = 0;
+    _isPaused = false;
     currentMedia = item;
     mediaItem.add(item);
     play();
@@ -164,18 +166,18 @@ class MediaPlayer extends BaseAudioHandler {
       _segmentDurations = segments.map((s) => s.duration).toList();
       _segmentOffset = 0;
 
+      // Compute total duration from segment durations (more reliable than
+      // player-reported duration for ConcatenatingAudioSource)
+      duration.value = _segmentDurations.fold(0.0, (sum, d) => sum + d);
+
       // Build concatenating source from segment URLs with auth headers
       final audioSources = segments.map((s) =>
         AudioSource.uri(Uri.parse(s.url), headers: headers)
       ).toList();
 
       final playlist = ConcatenatingAudioSource(children: audioSources);
-      final mediaDuration = await _player.setAudioSource(playlist);
-      _log.info('Playlist loaded, duration=$mediaDuration');
-
-      if (mediaDuration != null) {
-        duration.value = mediaDuration.inMilliseconds / 1000;
-      }
+      await _player.setAudioSource(playlist);
+      _log.info('Playlist loaded, duration=${duration.value}s (${_segmentDurations.length} segments)');
 
       _player.play();
       _notificationPlay();
@@ -205,6 +207,10 @@ class MediaPlayer extends BaseAudioHandler {
       for (int i = 0; i < _segmentDurations.length; i++) {
         if (accumulated + _segmentDurations[i] > targetSec) {
           final localOffset = targetSec - accumulated;
+          // Update offset immediately to avoid race between positionStream
+          // and currentIndexStream (positionStream may fire first with the
+          // local position before currentIndexStream updates the offset).
+          _segmentOffset = accumulated;
           await _player.seek(
             Duration(milliseconds: (localOffset * 1000).toInt()),
             index: i,
@@ -215,6 +221,7 @@ class MediaPlayer extends BaseAudioHandler {
       }
       // Past the end — seek to last segment
       final lastIndex = _segmentDurations.length - 1;
+      _segmentOffset = accumulated - _segmentDurations[lastIndex];
       await _player.seek(
         Duration(milliseconds: (_segmentDurations[lastIndex] * 1000).toInt()),
         index: lastIndex,
@@ -375,7 +382,7 @@ class MediaPlayer extends BaseAudioHandler {
      if(event.processingState == ProcessingState.completed) {
        if (_playbackType == PlaybackType.live) {
          // Auto-restart for live streams (reconnect on drop)
-         restartPlayer(sec: 0);
+         restartPlayer();
        } else {
          // Podcasts and archives stop when complete
          // HLS archives are handled natively by the player
@@ -390,6 +397,7 @@ class MediaPlayer extends BaseAudioHandler {
        isLoading.value = true;
      } else if(event.processingState == ProcessingState.ready && _player.playing) {
        isLoading.value = false;
+       _restartAttempts = 0;
      }
 
      isPlaying.value = _player.playing;

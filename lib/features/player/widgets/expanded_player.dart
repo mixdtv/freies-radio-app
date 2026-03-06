@@ -134,6 +134,7 @@ class ExpandedPlayer extends StatelessWidget {
                     _TransportControls(
                       player: player,
                       isLive: isLive,
+                      canSeek: !isLive || playerState.isLiveSeekable,
                       isDark: isDark,
                       textColor: textColor,
                     ),
@@ -567,12 +568,14 @@ class _SeekableProgressBarState extends State<_SeekableProgressBar> {
 class _TransportControls extends StatefulWidget {
   final MediaPlayer player;
   final bool isLive;
+  final bool canSeek;
   final bool isDark;
   final Color textColor;
 
   const _TransportControls({
     required this.player,
     required this.isLive,
+    required this.canSeek,
     required this.isDark,
     required this.textColor,
   });
@@ -653,6 +656,7 @@ class _TransportControlsState extends State<_TransportControls> {
   @override
   Widget build(BuildContext context) {
     final activeColor = widget.textColor.withOpacity(0.7);
+    final disabledColor = widget.textColor.withOpacity(0.15);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -663,8 +667,8 @@ class _TransportControlsState extends State<_TransportControls> {
           _SkipButton(
             seconds: 15,
             isForward: false,
-            color: activeColor,
-            onTap: _skipBackward,
+            color: widget.canSeek ? activeColor : disabledColor,
+            onTap: widget.canSeek ? _skipBackward : null,
           ),
           // Play / Pause / Loading
           GestureDetector(
@@ -699,8 +703,8 @@ class _TransportControlsState extends State<_TransportControls> {
           _SkipButton(
             seconds: 15,
             isForward: true,
-            color: activeColor,
-            onTap: _skipForward,
+            color: widget.canSeek ? activeColor : disabledColor,
+            onTap: widget.canSeek ? _skipForward : null,
           ),
         ],
       ),

@@ -54,15 +54,17 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
 
   _playLiveRadio(AppRadio radio) {
     settings.setLastRadio(radio.id);
+    final streamUrl = radio.stream.getPlatformStream(stationPrefix: radio.prefix);
     emit(state.copyWith(
       selectedRadio: radio,
       currentPodcastEpisode: null,
       currentArchiveProgram: null,
       clearPodcast: true,
       clearArchive: true,
+      liveStreamUrl: streamUrl,
     ));
     player.playMediaItem(MediaItem(
-        id: radio.stream.getPlatformStream(),
+        id: streamUrl,
         title: radio.name,
         displayTitle: radio.name,
         displaySubtitle: radio.tags.join(", "),
@@ -162,7 +164,8 @@ class PlayerCubitState {
     this.selectedRadio,
     this.currentPodcastEpisode,
     this.currentArchiveProgram,
-  });
+    String liveStreamUrl = '',
+  }) : _liveStreamUrl = liveStreamUrl;
 
   /// Whether currently playing archived content (not live)
   bool get isPlayingArchive => currentArchiveProgram != null;
@@ -173,17 +176,24 @@ class PlayerCubitState {
   /// Whether playing live radio stream
   bool get isPlayingLive => !isPlayingArchive && !isPlayingPodcast;
 
+  /// Whether the current live stream supports seeking (HLS has DVR buffer, Icecast does not)
+  bool get isLiveSeekable => isPlayingLive && _liveStreamUrl.endsWith('.m3u8');
+
+  final String _liveStreamUrl;
+
   PlayerCubitState copyWith({
     AppRadio? selectedRadio,
     PodcastEpisode? currentPodcastEpisode,
     RadioEpg? currentArchiveProgram,
     bool clearPodcast = false,
     bool clearArchive = false,
+    String? liveStreamUrl,
   }) {
     return PlayerCubitState(
       selectedRadio: selectedRadio ?? this.selectedRadio,
       currentPodcastEpisode: clearPodcast ? null : (currentPodcastEpisode ?? this.currentPodcastEpisode),
       currentArchiveProgram: clearArchive ? null : (currentArchiveProgram ?? this.currentArchiveProgram),
+      liveStreamUrl: liveStreamUrl ?? _liveStreamUrl,
     );
   }
 }

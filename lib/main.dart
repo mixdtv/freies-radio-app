@@ -46,6 +46,21 @@ Future<void> main() async {
   } else {
     initPage = RadioListPage.path;
   }
+
+  // Check if app was launched from a deep link (cold start).
+  // go_router 13.x ignores the platform's initial deep link and always uses
+  // initialLocation, so we detect it here and override initPage.
+  final defaultRoute = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+  if (defaultRoute != '/' && defaultRoute.isNotEmpty) {
+    final uri = Uri.tryParse(defaultRoute);
+    if (uri != null) {
+      final path = uri.path;
+      if (path.startsWith('/show/') || path.startsWith('/app/show/')) {
+        initPage = path;
+      }
+    }
+  }
+
    GoRouter router = AppNavigation.initAppRouter(
       initPage: initPage
   );

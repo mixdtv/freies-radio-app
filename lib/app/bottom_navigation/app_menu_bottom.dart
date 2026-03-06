@@ -166,6 +166,7 @@ class AppMenuBottom extends StatelessWidget {
       case 0:
         context.replace(RadioTranscriptPage.path);
       case 1:
+        context.read<TimeLineCubit>().skipEmptyEpgRedirect = true;
         context.replace(RadioTimeLinePage.path);
       case 2:
         // Navigate directly to podcast detail if there's only one podcast

@@ -85,6 +85,14 @@ class AppConfig {
   /// Show all menu items:
   // static const List<String> visibleMenuItems = ['transcript', 'timeline', 'podcasts', 'visual', 'about'];
 
+  /// Comma-separated list of station prefixes that should always use HLS
+  /// instead of the source stream (e.g. when a station's source stream has
+  /// a broken SSL certificate chain).
+  static const String _forceHlsStations = String.fromEnvironment('FORCE_HLS_STATIONS', defaultValue: '');
+  static List<String> get forceHlsStations => _forceHlsStations.isEmpty
+      ? []
+      : _forceHlsStations.split(',').map((s) => s.trim()).toList();
+
   /// Enable archive playback feature
   /// When true, shows play button on past programs in the timeline
   /// Defaults to true (enabled)

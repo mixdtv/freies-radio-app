@@ -13,6 +13,7 @@ import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/features/timeline/timeline_list_item.dart';
 import 'package:radiozeit/features/timeline/timeline_list_item_loading.dart';
 import 'package:radiozeit/utils/app_logger.dart';
+import 'package:radiozeit/l10n/app_localizations.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
@@ -56,8 +57,12 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     }
     var cubit = context.read<TimeLineCubit>();
     var state = cubit.state;
-    // Prefer scrollToId (from search) over activeEpg
-    final targetId = state.scrollToId ?? state.activeEpg.id;
+    // Prefer scrollToId (from search) over activeEpg, fall back to next upcoming program
+    String targetId = state.scrollToId ?? state.activeEpg.id;
+    if (targetId.isEmpty && state.futureEpg.isNotEmpty) {
+      targetId = state.futureEpg.first.id;
+      _log.fine('No active program, falling back to next upcoming: $targetId');
+    }
     _log.fine('targetId: $targetId, activeEpg.id: ${state.activeEpg.id}, allEpg.length: ${state.allEpg.length}');
     if(targetId.isNotEmpty) {
       int index = state.allEpg.indexWhere((e) => e.id == targetId);
@@ -79,7 +84,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
         }
       }
     } else {
-      _log.fine('activeEpg is empty, cannot scroll');
+      _log.fine('No program to scroll to');
     }
   }
 
@@ -88,7 +93,9 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     return MultiBlocListener(
       listeners: [
         BlocListener<TimeLineCubit, TimeLineState>(
-          listenWhen: (p, c) => p.activeEpg.id != c.activeEpg.id,
+          listenWhen: (p, c) =>
+              p.activeEpg.id != c.activeEpg.id ||
+              (p.futureEpg.isEmpty && c.futureEpg.isNotEmpty),
           listener: (context, state) {
             _log.fine('BlocListener triggered, isScrolled: $isScrolled, activeEpg: ${state.activeEpg.id}');
             if(!isScrolled) {
@@ -111,11 +118,12 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
             });
           },
         ),
-        // Redirect to About page if station has no program data
+        // Redirect to About page if station has no program data (only on first load)
         BlocListener<TimeLineCubit, TimeLineState>(
           listenWhen: (p, c) => p.isLoading && !c.isLoading,
           listener: (context, state) {
-            if (state.allEpg.isEmpty && !state.isLoading) {
+            final cubit = context.read<TimeLineCubit>();
+            if (state.allEpg.isEmpty && !state.isLoading && !cubit.skipEmptyEpgRedirect) {
               _log.info('No EPG data, navigating to About page');
               context.read<BottomNavigationCubit>().toPage(4);
               context.pushReplacement(RadioAboutPage.path);
@@ -143,8 +151,9 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                       itemBuilder: (context, index) => const TimelineListItemLoading(),),
                   );
                 }
-                // BlocListener will redirect to About page
-                return const SizedBox.shrink();
+                return Center(
+                  child: Text(AppLocalizations.of(context)?.timeline_no_shows ?? ''),
+                );
               }
 
               return RefreshIndicator(
