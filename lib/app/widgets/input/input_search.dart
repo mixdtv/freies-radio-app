@@ -99,7 +99,7 @@ class _InputSearchState extends State<InputSearch> {
             children: [
               SvgPicture.asset("assets/icons/ic_search.svg",width: 20,color: Theme.of(context).colorScheme.onBackground,),
               const SizedBox(width: 8,),
-              Text(widget.hint,style: Theme.of(context).inputDecorationTheme.hintStyle,)
+              Flexible(child: Text(widget.hint,style: Theme.of(context).inputDecorationTheme.hintStyle,overflow: TextOverflow.ellipsis,))
             ],
           ),
         ),

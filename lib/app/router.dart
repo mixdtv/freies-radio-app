@@ -31,6 +31,15 @@ class AppNavigation {
       final router = GoRouter(
           initialLocation: initPage,
           debugLogDiagnostics: true,
+          // Handle full HTTPS app link URLs that arrive on warm start.
+          // go_router may receive the full URL instead of just the path,
+          // so we extract the path for proper route matching.
+          redirect: (context, state) {
+            if (state.uri.host == 'freies-radio.radiozeit.de') {
+              return state.uri.path;
+            }
+            return null;
+          },
           routes: <RouteBase>[
             GoRoute(
               path: LocationRequestPage.path,

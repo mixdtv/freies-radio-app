@@ -8,22 +8,26 @@ import 'package:radiozeit/data/model/podcast.dart';
 class PodcastState {
   final List<Podcast> podcasts;
   final bool isLoading;
+  final bool isLoadingMore;
   final String? error;
 
   PodcastState({
     this.podcasts = const [],
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.error,
   });
 
   PodcastState copyWith({
     List<Podcast>? podcasts,
     bool? isLoading,
+    bool? isLoadingMore,
     String? error,
   }) {
     return PodcastState(
       podcasts: podcasts ?? this.podcasts,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
     );
   }
@@ -63,27 +67,47 @@ class PodcastCubit extends Cubit<PodcastState> {
     );
 
     if (!silent) {
-      emit(state.copyWith(isLoading: true, error: null));
+      emit(state.copyWith(isLoading: true, isLoadingMore: false, error: null));
     }
 
     try {
-      final podcasts = await Future.wait(
-        feedUrls.map((url) => repository.loadPodcastFeed(
+      final loadedPodcasts = <Podcast>[];
+      int completed = 0;
+      final total = feedUrls.length;
+
+      // Start all feeds concurrently, but emit as each one completes
+      final futures = feedUrls.map((url) async {
+        final podcast = await repository.loadPodcastFeed(
           feedUrl: url,
           cancelToken: _cancelToken,
-        )),
-      );
+        );
+        completed++;
+        loadedPodcasts.add(podcast);
+
+        if (!silent) {
+          emit(state.copyWith(
+            podcasts: List.of(loadedPodcasts),
+            isLoading: false,
+            isLoadingMore: completed < total,
+          ));
+        }
+      });
+
+      await Future.wait(futures);
 
       stopwatch.stop();
       developer.log(
-        'All ${podcasts.length} podcast(s) loaded in ${stopwatch.elapsedMilliseconds}ms',
+        'All ${loadedPodcasts.length} podcast(s) loaded in ${stopwatch.elapsedMilliseconds}ms',
         name: 'PodcastCubit',
       );
 
-      emit(state.copyWith(
-        podcasts: podcasts,
-        isLoading: false,
-      ));
+      if (silent) {
+        emit(state.copyWith(
+          podcasts: loadedPodcasts,
+          isLoading: false,
+          isLoadingMore: false,
+        ));
+      }
     } catch (e) {
       stopwatch.stop();
       developer.log(
@@ -95,6 +119,7 @@ class PodcastCubit extends Cubit<PodcastState> {
       if (!silent) {
         emit(state.copyWith(
           isLoading: false,
+          isLoadingMore: false,
           error: e.toString(),
         ));
       }

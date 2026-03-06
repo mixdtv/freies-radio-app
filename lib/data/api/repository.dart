@@ -241,6 +241,7 @@ class Repository {
       'Starting podcast fetch for $feedUrl',
       name: 'PodcastLoader',
     );
+    print('PodcastLoader: Fetching feed $feedUrl');
 
     // Fetch RSS feed
     final fetchStopwatch = Stopwatch()..start();
@@ -270,6 +271,11 @@ class Repository {
     );
 
     final podcast = Podcast.fromJson(podcastJson);
+    print('PodcastLoader: Parsed "${podcast.title}" with ${podcast.episodes.length} episodes');
+    if (podcast.episodes.isNotEmpty) {
+      final first = podcast.episodes.first;
+      print('PodcastLoader: First episode audioUrl: "${first.audioUrl}"');
+    }
 
     // Cache the podcast
     _podcastCache[feedUrl] = _CachedPodcast(

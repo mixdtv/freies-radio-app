@@ -22,6 +22,7 @@ class TimeLineCubit extends Cubit<TimeLineState> with BlocPresentationMixin<Time
   Repository repo = Repository.getInstance();
   String epgSlug = "";
   int lastUpdateListTime = 0;
+  bool skipEmptyEpgRedirect = false;
   Timer? updateProgress;
   CancelToken? cancelToken;
 
@@ -39,6 +40,7 @@ class TimeLineCubit extends Cubit<TimeLineState> with BlocPresentationMixin<Time
   }
 
   selectRadio(AppRadio radio) {
+    skipEmptyEpgRedirect = false;
     if(epgSlug != radio.epgPrefix) {
       cancelToken?.cancel();
       epgSlug = radio.epgPrefix;

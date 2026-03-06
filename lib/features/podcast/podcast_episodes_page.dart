@@ -326,13 +326,11 @@ class PodcastEpisodesPage extends StatelessWidget {
           ),
           if (activePodcast.description.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              activePodcast.description,
+            _ExpandableDescription(
+              text: activePodcast.description,
               style: textTheme.bodyMedium?.copyWith(
                 color: textTheme.bodyMedium?.color?.withOpacity(0.6),
-              ),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
+              ) ?? const TextStyle(),
             ),
           ],
         ],
@@ -356,6 +354,70 @@ class PodcastEpisodesPage extends StatelessWidget {
     } else {
       return '${seconds}s';
     }
+  }
+}
+
+class _ExpandableDescription extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final int maxLines;
+
+  const _ExpandableDescription({
+    required this.text,
+    required this.style,
+    this.maxLines = 4,
+  });
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textSpan = TextSpan(text: widget.text, style: widget.style);
+        final textPainter = TextPainter(
+          text: textSpan,
+          maxLines: widget.maxLines,
+          textDirection: ui.TextDirection.ltr,
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final hasOverflow = textPainter.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              style: widget.style,
+              maxLines: _expanded ? null : widget.maxLines,
+              overflow: _expanded ? null : TextOverflow.ellipsis,
+            ),
+            if (hasOverflow)
+              Align(
+                alignment: Alignment.centerRight,
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                      child: Text(
+                        _expanded ? "weniger" : "mehr",
+                        style: widget.style.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 

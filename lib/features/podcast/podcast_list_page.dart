@@ -69,9 +69,16 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
                 );
               }
 
+              final itemCount = state.podcasts.length + (state.isLoadingMore ? 1 : 0);
               return ListView.builder(
-                itemCount: state.podcasts.length,
+                itemCount: itemCount,
                 itemBuilder: (context, index) {
+                  if (index >= state.podcasts.length) {
+                    return const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
                   final podcast = state.podcasts[index];
                   return _buildPodcastItem(context, podcast);
                 },
@@ -120,11 +127,13 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
   }
 
   Widget _buildLoadingItem() {
+    final cardColor = Theme.of(context).cardColor;
+    final shimmerColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.1);
     return Container(
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -133,7 +142,7 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: shimmerColor,
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -145,13 +154,13 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
                 Container(
                   width: double.infinity,
                   height: 16,
-                  color: Colors.grey.shade300,
+                  color: shimmerColor,
                 ),
                 const SizedBox(height: 8),
                 Container(
                   width: 200,
                   height: 14,
-                  color: Colors.grey.shade300,
+                  color: shimmerColor,
                 ),
               ],
             ),
@@ -173,7 +182,7 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
@@ -217,21 +226,28 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    podcast.title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  if (podcast.title.trim().isNotEmpty)
+                    Text(
+                      podcast.title.trim(),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    podcast.description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
+                  if (podcast.description.trim().isNotEmpty) ...[
+                    if (podcast.title.trim().isNotEmpty)
+                      const SizedBox(height: 4),
+                    Text(
+                      podcast.description.trim(),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     '${podcast.episodes.length} episodes',

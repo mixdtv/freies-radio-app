@@ -84,12 +84,13 @@ class RadioStream {
     );
   }
 
-  String getPlatformStream() {
+  String getPlatformStream({String? stationPrefix}) {
+    if (stationPrefix != null && AppConfig.forceHlsStations.contains(stationPrefix)) {
+      return hls;
+    }
     if (AppConfig.useSourceStream && source.isNotEmpty) {
       return source;
     }
     return hls;
-    // if(Platform.isIOS) return hls;
-    // return dash;
   }
 }
