@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:radiozeit/l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -35,6 +36,13 @@ class RadioNotFoundInfo extends StatelessWidget {
         }, child: Text(AppLocalizations.of(context)!.title_legal,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700,decoration: TextDecoration.underline)
           )
+        ),
+        const SizedBox(height: 24),
+        SvgPicture.asset(
+          Theme.of(context).brightness == Brightness.dark
+              ? 'assets/images/logo_mabb_dark.svg'
+              : 'assets/images/logo_mabb.svg',
+          width: 120,
         ),
       ],
     );
