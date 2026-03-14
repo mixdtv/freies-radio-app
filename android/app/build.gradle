@@ -75,6 +75,9 @@ android {
             useLegacyPackaging = false
         }
     }
+
+    experimentalProperties["android.experimental.art.profileBasedDexLayout"] = true
+    experimentalProperties["android.experimental.enablePageSizeConfig"] = true
 }
 
 flutter {
