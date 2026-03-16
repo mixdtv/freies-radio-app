@@ -8,6 +8,7 @@ import 'package:radiozeit/app/style.dart';
 import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
+import 'package:radiozeit/l10n/app_localizations.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
@@ -35,7 +36,12 @@ class _TimelineListItemState extends State<TimelineListItem> {
   bool _isDescExpanded = false;
 
   /// Whether this program is in the past and can be played from archive
-  bool get canPlayArchive => widget.program.end.isBefore(DateTime.now());
+  bool get canPlayArchive {
+    if (widget.program.archiveDisabled) return false;
+    final station = context.read<PlayerCubit>().state.selectedRadio;
+    if (station != null && station.archiveDisabled) return false;
+    return widget.program.end.isBefore(DateTime.now());
+  }
 
   /// Whether this program is in the future (hasn't started yet)
   bool get isFutureShow => widget.program.start.isAfter(DateTime.now());
@@ -263,7 +269,7 @@ class _TimelineListItemState extends State<TimelineListItem> {
               child: Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  _isDescExpanded ? "weniger" : "mehr",
+                  _isDescExpanded ? AppLocalizations.of(context)!.button_less : AppLocalizations.of(context)!.button_more,
                   style: descStyle?.copyWith(
                     fontWeight: FontWeight.w600,
                     decoration: TextDecoration.underline,

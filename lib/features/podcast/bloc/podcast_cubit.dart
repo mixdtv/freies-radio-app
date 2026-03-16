@@ -36,29 +36,44 @@ class PodcastState {
 class PodcastCubit extends Cubit<PodcastState> {
   final Repository repository;
   CancelToken? _cancelToken;
-  Future<void>? _currentPreload;
+  Future<void>? _currentLoad;
   List<String>? _currentFeedUrls;
+  List<Podcast> _loadedPodcasts = [];
+  bool _silent = false;
 
   PodcastCubit({required this.repository}) : super(PodcastState());
 
   Future<void> loadPodcasts(List<String> feedUrls, {bool silent = false, String? radioName}) async {
     final radioLabel = radioName != null ? ' for "$radioName"' : '';
 
-    // If preload is in progress for the same feeds, wait for it instead of restarting
-    if (_currentPreload != null && _listEquals(_currentFeedUrls, feedUrls)) {
+    // If a load is already in progress for the same feeds, join it
+    if (_currentLoad != null && _listEquals(_currentFeedUrls, feedUrls)) {
       developer.log(
-        'Waiting for existing preload$radioLabel to complete',
+        'Joining existing load$radioLabel (silent: $_silent -> $silent)',
         name: 'PodcastCubit',
       );
-      if (!silent) {
-        emit(state.copyWith(isLoading: true, error: null));
+      // Switch from silent to non-silent: emit current state immediately
+      if (_silent && !silent) {
+        _silent = false;
+        if (_loadedPodcasts.isNotEmpty) {
+          emit(state.copyWith(
+            podcasts: List.of(_loadedPodcasts),
+            isLoading: false,
+            isLoadingMore: true,
+            error: null,
+          ));
+        } else {
+          emit(state.copyWith(isLoading: true, error: null));
+        }
       }
-      await _currentPreload;
+      await _currentLoad;
       return;
     }
 
     _cancelToken?.cancel();
     _cancelToken = CancelToken();
+    _silent = silent;
+    _currentFeedUrls = feedUrls;
 
     final stopwatch = Stopwatch()..start();
     developer.log(
@@ -70,73 +85,79 @@ class PodcastCubit extends Cubit<PodcastState> {
       emit(state.copyWith(isLoading: true, isLoadingMore: false, error: null));
     }
 
-    try {
-      final loadedPodcasts = <Podcast>[];
-      int completed = 0;
-      final total = feedUrls.length;
+    _loadedPodcasts = [];
+    int completed = 0;
+    final total = feedUrls.length;
 
-      // Start all feeds concurrently, but emit as each one completes
-      final futures = feedUrls.map((url) async {
+    // Start all feeds concurrently, emit as each one completes
+    _currentLoad = Future.wait(feedUrls.map((url) async {
+      try {
         final podcast = await repository.loadPodcastFeed(
           feedUrl: url,
           cancelToken: _cancelToken,
         );
         completed++;
-        loadedPodcasts.add(podcast);
+        _loadedPodcasts.add(podcast);
 
-        if (!silent) {
+        if (!_silent) {
           emit(state.copyWith(
-            podcasts: List.of(loadedPodcasts),
+            podcasts: List.of(_loadedPodcasts),
             isLoading: false,
             isLoadingMore: completed < total,
           ));
         }
-      });
+      } catch (e) {
+        completed++;
+        developer.log(
+          'Failed to load feed $url: $e',
+          name: 'PodcastCubit',
+          level: 900,
+        );
 
-      await Future.wait(futures);
-
-      stopwatch.stop();
-      developer.log(
-        'All ${loadedPodcasts.length} podcast(s) loaded in ${stopwatch.elapsedMilliseconds}ms',
-        name: 'PodcastCubit',
-      );
-
-      if (silent) {
-        emit(state.copyWith(
-          podcasts: loadedPodcasts,
-          isLoading: false,
-          isLoadingMore: false,
-        ));
+        if (!_silent) {
+          emit(state.copyWith(
+            isLoading: _loadedPodcasts.isEmpty && completed < total,
+            isLoadingMore: completed < total,
+          ));
+        }
       }
-    } catch (e) {
-      stopwatch.stop();
-      developer.log(
-        'Podcast loading failed after ${stopwatch.elapsedMilliseconds}ms: $e',
-        name: 'PodcastCubit',
-        level: 900, // Warning level
-      );
+    }));
 
-      if (!silent) {
-        emit(state.copyWith(
-          isLoading: false,
-          isLoadingMore: false,
-          error: e.toString(),
-        ));
-      }
-      // Silent failures are ignored - data will be in cache for next load
+    await _currentLoad;
+    _currentLoad = null;
+    _currentFeedUrls = null;
+
+    stopwatch.stop();
+    developer.log(
+      '${_loadedPodcasts.length}/${total} podcast(s) loaded in ${stopwatch.elapsedMilliseconds}ms',
+      name: 'PodcastCubit',
+    );
+
+    if (_loadedPodcasts.isEmpty) {
+      emit(state.copyWith(
+        isLoading: false,
+        isLoadingMore: false,
+        error: 'Failed to load podcasts',
+      ));
+    } else {
+      emit(state.copyWith(
+        podcasts: _loadedPodcasts,
+        isLoading: false,
+        isLoadingMore: false,
+      ));
     }
   }
 
   Future<void> preloadPodcasts(List<String> feedUrls, {String? radioName}) async {
     final radioLabel = radioName != null ? ' for "$radioName"' : '';
 
-    // Check if we're already preloading the same feeds
-    if (_currentPreload != null && _listEquals(_currentFeedUrls, feedUrls)) {
+    // Check if we're already loading the same feeds
+    if (_currentLoad != null && _listEquals(_currentFeedUrls, feedUrls)) {
       developer.log(
         'Skipping duplicate preload$radioLabel - already in progress',
         name: 'PodcastCubit',
       );
-      return _currentPreload!;
+      return _currentLoad!;
     }
 
     developer.log(
@@ -144,13 +165,7 @@ class PodcastCubit extends Cubit<PodcastState> {
       name: 'PodcastCubit',
     );
 
-    _currentFeedUrls = feedUrls;
-    _currentPreload = loadPodcasts(feedUrls, silent: true, radioName: radioName).whenComplete(() {
-      _currentPreload = null;
-      _currentFeedUrls = null;
-    });
-
-    return _currentPreload!;
+    return loadPodcasts(feedUrls, silent: true, radioName: radioName);
   }
 
   bool _listEquals(List<String>? a, List<String>? b) {

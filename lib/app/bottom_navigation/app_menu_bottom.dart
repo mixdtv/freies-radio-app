@@ -7,7 +7,6 @@ import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/player/widgets/player_controls.dart';
-import 'package:radiozeit/features/player/widgets/player_progress.dart';
 import 'package:radiozeit/features/podcast/podcast_episodes_page.dart';
 import 'package:radiozeit/features/podcast/podcast_list_page.dart';
 import 'package:radiozeit/features/radio_about/radio_about_page.dart';
@@ -33,10 +32,7 @@ class AppMenuBottom extends StatelessWidget {
         top: false,
         child: SizedBox(
           height: isShow ? 60 + 4 + 49 : 60 + 4 + 6,
-          child: Stack(
-            fit: StackFit.loose,
-            children: [
-              Container(
+          child: Container(
                   decoration: BoxDecoration(
                       gradient: AppGradient.getPanelGradient(context)
                   ),
@@ -59,13 +55,6 @@ class AppMenuBottom extends StatelessWidget {
                       ),
                     ],
                   )),
-              Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: PlayerProgress())
-            ],
-          ),
         ),
       );
     }

@@ -18,6 +18,7 @@ class RadioEpg {
   int duration;
   DateTime start;
   DateTime end;
+  bool archiveDisabled;
 
   RadioEpg({
 
@@ -32,6 +33,7 @@ class RadioEpg {
     required this.end,
     required this.duration,
     required this.hosts,
+    this.archiveDisabled = false,
   });
 
   factory RadioEpg.fromJson(Map<String, dynamic> map) {
@@ -47,6 +49,7 @@ class RadioEpg {
       duration: JsonMap.toInt(map['duration']) ?? 0,
       start: JsonMap.toDate(map['epgBroadcastStartTime'],"yyyy-MM-dd'T'HH:mm:ss") ?? DateTime.now(),
       end: JsonMap.toDate(map['epgBroadcastEndTime'],"yyyy-MM-dd'T'HH:mm:ss")?? DateTime.now(),
+      archiveDisabled: map['archiveDisabled'] == true,
     );
   }
 
@@ -75,7 +78,8 @@ class RadioEpg {
         subheadline = "",
         duration = 0,
         start = DateTime.now(),
-        end = DateTime.now();
+        end = DateTime.now(),
+        archiveDisabled = false;
 
   @override
   bool operator ==(Object other) =>

@@ -1,8 +1,7 @@
-import 'dart:ui' as ui;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:radiozeit/app/bottom_navigation/bottom_navigation_cubit.dart';
@@ -15,6 +14,8 @@ import 'package:radiozeit/features/podcast/podcast_list_page.dart';
 import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/utils/colors.dart';
+import 'package:radiozeit/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PodcastEpisodesPage extends StatelessWidget {
   static const String path = "/PodcastEpisodesPage";
@@ -375,48 +376,58 @@ class _ExpandableDescription extends StatefulWidget {
 class _ExpandableDescriptionState extends State<_ExpandableDescription> {
   bool _expanded = false;
 
+  static String _stripHtml(String html) {
+    return html.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final textSpan = TextSpan(text: widget.text, style: widget.style);
-        final textPainter = TextPainter(
-          text: textSpan,
-          maxLines: widget.maxLines,
-          textDirection: ui.TextDirection.ltr,
-          textScaler: MediaQuery.textScalerOf(context),
-        )..layout(maxWidth: constraints.maxWidth);
-        final hasOverflow = textPainter.didExceedMaxLines;
+    final plainText = _stripHtml(widget.text);
+    final hasOverflow = plainText.length > 100;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.text,
-              style: widget.style,
-              maxLines: _expanded ? null : widget.maxLines,
-              overflow: _expanded ? null : TextOverflow.ellipsis,
-            ),
-            if (hasOverflow)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    onTap: () => setState(() => _expanded = !_expanded),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                      child: Text(
-                        _expanded ? "weniger" : "mehr",
-                        style: widget.style.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_expanded)
+          Html(
+            data: widget.text,
+            onLinkTap: (url, attributes, element) {
+              if (url != null) launchUrl(Uri.parse(url));
+            },
+            style: {
+              "body": Style(
+                margin: Margins.zero,
+                padding: HtmlPaddings.zero,
+                fontSize: FontSize(widget.style.fontSize ?? 14),
+                color: widget.style.color,
+              ),
+            },
+          )
+        else
+          Text(
+            plainText,
+            style: widget.style,
+            maxLines: widget.maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (hasOverflow)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                  child: Text(
+                    _expanded ? AppLocalizations.of(context)!.button_less : AppLocalizations.of(context)!.button_more,
+                    style: widget.style.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
-          ],
-        );
-      },
+            ),
+          ),
+      ],
     );
   }
 }
@@ -542,31 +553,39 @@ class _EpisodeItemState extends State<_EpisodeItem> {
                     ),
                   if (widget.episode.description.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final textSpan = TextSpan(
-                          text: widget.episode.description,
-                          style: descStyle,
-                        );
-                        final textPainter = TextPainter(
-                          text: textSpan,
-                          maxLines: 4,
-                          textDirection: ui.TextDirection.ltr,
-                          textScaler: MediaQuery.textScalerOf(context),
-                        )..layout(maxWidth: constraints.maxWidth);
-                        // Use TextPainter check OR character fallback for edge cases
-                        final hasOverflow = textPainter.didExceedMaxLines ||
-                            widget.episode.description.length > 100;
+                    Builder(
+                      builder: (context) {
+                        final plainText = widget.episode.description
+                            .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                            .replaceAll(RegExp(r'\s+'), ' ')
+                            .trim();
+                        final hasOverflow = plainText.length > 100;
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              widget.episode.description,
-                              maxLines: _isDescExpanded ? 100 : 4,
-                              overflow: TextOverflow.ellipsis,
-                              style: descStyle,
-                            ),
+                            if (_isDescExpanded)
+                              Html(
+                                data: widget.episode.description,
+                                onLinkTap: (url, attributes, element) {
+                                  if (url != null) launchUrl(Uri.parse(url));
+                                },
+                                style: {
+                                  "body": Style(
+                                    margin: Margins.zero,
+                                    padding: HtmlPaddings.zero,
+                                    fontSize: FontSize(descStyle.fontSize ?? 14),
+                                    color: descStyle.color,
+                                  ),
+                                },
+                              )
+                            else
+                              Text(
+                                plainText,
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                style: descStyle,
+                              ),
                             if (hasOverflow)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
@@ -579,7 +598,7 @@ class _EpisodeItemState extends State<_EpisodeItem> {
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                                         child: Text(
-                                          _isDescExpanded ? "weniger" : "mehr",
+                                          _isDescExpanded ? AppLocalizations.of(context)!.button_less : AppLocalizations.of(context)!.button_more,
                                           style: descStyle.copyWith(
                                             fontWeight: FontWeight.w600,
                                           ),
