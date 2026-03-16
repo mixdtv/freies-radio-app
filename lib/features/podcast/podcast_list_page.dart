@@ -239,7 +239,10 @@ class _PodcastListPageState extends State<PodcastListPage> with AfterLayoutMixin
                     if (podcast.title.trim().isNotEmpty)
                       const SizedBox(height: 4),
                     Text(
-                      podcast.description.trim(),
+                      podcast.description.trim()
+                          .replaceAll(RegExp(r'<[^>]*>'), ' ')
+                          .replaceAll(RegExp(r'\s+'), ' ')
+                          .trim(),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

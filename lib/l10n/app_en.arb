@@ -28,6 +28,8 @@
     "location_button_later":"Remind me later",
     "button_read_less":"Read less",
     "button_read_more":"Read more",
+    "button_more":"more",
+    "button_less":"less",
     "page_about_title_top_song":"Top played songs",
     "page_radio_list_title_not_found":"No radio stations found",
     "title_favorite":"My favourites",

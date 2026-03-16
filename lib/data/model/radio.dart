@@ -20,6 +20,7 @@ class AppRadio {
   List<String> tags;
   List<SongInfo> topSongs;
   List<String>? podcasts;
+  bool archiveDisabled;
 
   AppRadio({
     required this.id,
@@ -37,6 +38,7 @@ class AppRadio {
     required this.topSongs,
     required this.iconColor,
     this.podcasts,
+    this.archiveDisabled = false,
   });
 
   factory AppRadio.fromJson(Map<String,dynamic> json) {
@@ -60,7 +62,8 @@ class AppRadio {
         iconColor: JsonMap.toStr(json["logoBgColor"]) ?? "",
         tags: JsonMap.toList(json["genres"]).map((e) => e.toString()).toList(),
         topSongs: const [],
-        podcasts: podcasts
+        podcasts: podcasts,
+        archiveDisabled: json["archiveDisabled"] == true,
     );
   }
 }
