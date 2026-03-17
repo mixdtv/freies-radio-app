@@ -3,9 +3,11 @@ import 'package:logging/logging.dart';
 import 'package:radiozeit/utils/app_logger.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/features/auth/session_cubit.dart';
@@ -24,6 +26,9 @@ import 'package:radiozeit/l10n/app_localizations.dart';
 // final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 // final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 late AudioHandler _audioHandler;
+
+bool _isDeepLinkPath(String path) =>
+    path.startsWith('/show/') || path.startsWith('/app/show/');
 
 Future<void> main() async {
    // Fail fast if environment is not configured
@@ -49,21 +54,47 @@ Future<void> main() async {
 
   // Check if app was launched from a deep link (cold start).
   // go_router 13.x ignores the platform's initial deep link and always uses
-  // initialLocation, so we detect it here and override initPage.
+  // initialLocation. On iOS, defaultRouteName works; on Android it returns "/",
+  // so we read the intent URI via a platform channel.
   final defaultRoute = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
-  if (defaultRoute != '/' && defaultRoute.isNotEmpty) {
+  if (defaultRoute != '/') {
     final uri = Uri.tryParse(defaultRoute);
-    if (uri != null) {
-      final path = uri.path;
-      if (path.startsWith('/show/') || path.startsWith('/app/show/')) {
-        initPage = path;
+    if (uri != null && _isDeepLinkPath(uri.path)) {
+      initPage = uri.path;
+    }
+  }
+
+  // On Android, read the intent URI directly
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    try {
+      const channel = MethodChannel('de.radiozeit.freiesradio/deeplink');
+      final String? intentUri = await channel.invokeMethod('getInitialLink');
+      if (intentUri != null) {
+        final uri = Uri.tryParse(intentUri);
+        if (uri != null && _isDeepLinkPath(uri.path)) {
+          initPage = uri.path;
+        }
       }
+    } catch (e) {
+      debugPrint('Deep link channel error: $e');
     }
   }
 
    GoRouter router = AppNavigation.initAppRouter(
       initPage: initPage
   );
+
+  // Listen for deep links on warm start (Android)
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    const EventChannel('de.radiozeit.freiesradio/deeplink_events')
+        .receiveBroadcastStream()
+        .listen((event) {
+      final uri = Uri.tryParse(event as String);
+      if (uri != null && _isDeepLinkPath(uri.path)) {
+        router.go(uri.path);
+      }
+    });
+  }
 
   var mediaPlayer = MediaPlayer();
 
