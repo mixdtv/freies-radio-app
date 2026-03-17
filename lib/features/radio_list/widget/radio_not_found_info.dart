@@ -44,6 +44,7 @@ class RadioNotFoundInfo extends StatelessWidget {
               : 'assets/images/logo_mabb.svg',
           width: 120,
         ),
+        const SizedBox(height: 24),
       ],
     );
   }
