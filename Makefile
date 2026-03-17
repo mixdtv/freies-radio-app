@@ -1,7 +1,7 @@
 FLUTTER := .fvm/flutter_sdk/bin/flutter
 CONFIG ?= .env.json
 
-.PHONY: help clean get devices select-device bump \
+.PHONY: help clean get devices select-device bump bump-minor \
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish
 
@@ -13,6 +13,7 @@ help:
 	@echo "  clean             Clean build artifacts"
 	@echo "  devices           List available devices"
 	@echo "  bump              Increment build number in pubspec.yaml"
+	@echo "  bump-minor        Bump patch version and reset build number to 1"
 	@echo "  select-device     Select and save device for deploy targets"
 	@echo ""
 	@echo "Android:"
@@ -92,6 +93,18 @@ bump:
 	next=$$((build + 1)); \
 	sed -i '' "s/^version: .*/version: $$name+$$next/" pubspec.yaml; \
 	echo "Bumped version: $$name+$$build -> $$name+$$next"
+
+bump-minor:
+	@current=$$(grep '^version:' pubspec.yaml | sed 's/version: *//'); \
+	name=$${current%%+*}; \
+	major=$${name%%.*}; \
+	rest=$${name#*.}; \
+	minor=$${rest%%.*}; \
+	patch=$${rest#*.}; \
+	next_patch=$$((patch + 1)); \
+	new_version="$$major.$$minor.$$next_patch+1"; \
+	sed -i '' "s/^version: .*/version: $$new_version/" pubspec.yaml; \
+	echo "Bumped version: $$name -> $$major.$$minor.$$next_patch (build reset to 1)"
 
 ios-ipa: get
 	$(FLUTTER) build ipa --release --dart-define-from-file=$(CONFIG)
