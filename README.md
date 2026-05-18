@@ -17,6 +17,10 @@ Die Plattform für unabhängige Radios - A Flutter-based radio streaming applica
 
 Then run with:
 ```bash
+# Android (must specify a flavor: play or fdroid)
+flutter run --flavor play --dart-define-from-file=.env.json
+
+# iOS
 flutter run --dart-define-from-file=.env.json
 ```
 
@@ -63,13 +67,15 @@ flutter gen-l10n
 
 ### 3. Run the App
 
-```bash
-# Run on connected device/emulator
-flutter run --dart-define-from-file=.env.json
+Android builds require a flavor (`play` for the standard build, `fdroid` for the F-Droid build with `.fdroid` applicationId suffix). iOS has no flavor.
 
-# Run on specific platform
+```bash
+# Android
+flutter run --flavor play --dart-define-from-file=.env.json
+flutter run -d android --flavor play --dart-define-from-file=.env.json
+
+# iOS
 flutter run -d ios --dart-define-from-file=.env.json
-flutter run -d android --dart-define-from-file=.env.json
 ```
 
 ## Configuration
@@ -85,12 +91,18 @@ The app uses a `.env.json` file for configuration (see [Setup](#setup)). All con
 
 ### IDE Configuration
 
-**VS Code:** Add to `.vscode/launch.json`:
+**VS Code:** Add to `.vscode/launch.json` (for Android add `--flavor`, for iOS omit it):
 ```json
 {
   "configurations": [
     {
-      "name": "Flutter",
+      "name": "Flutter (Android)",
+      "request": "launch",
+      "type": "dart",
+      "args": ["--flavor", "play", "--dart-define-from-file=.env.json"]
+    },
+    {
+      "name": "Flutter (iOS)",
       "request": "launch",
       "type": "dart",
       "args": ["--dart-define-from-file=.env.json"]
@@ -101,6 +113,7 @@ The app uses a `.env.json` file for configuration (see [Setup](#setup)). All con
 
 **Android Studio/IntelliJ:**
 - Run → Edit Configurations
+- Build flavor: `play` (or `fdroid` for F-Droid build)
 - Additional run args: `--dart-define-from-file=.env.json`
 
 ## Project Structure
@@ -172,14 +185,21 @@ flutter build ios --release --dart-define-from-file=.env.json
 
 **Build:**
 ```bash
-flutter build apk --release --dart-define-from-file=.env.json
-# or
-flutter build appbundle --release --dart-define-from-file=.env.json
+# Play Store (signed with key.jks)
+flutter build apk --release --flavor play --dart-define-from-file=.env.json
+flutter build appbundle --release --flavor play --dart-define-from-file=.env.json
+
+# F-Droid build (different applicationId: de.radiozeit.freiesradio.fdroid,
+# signed locally with key.jks for testing; F-Droid's buildserver produces
+# an unsigned APK and signs with its own key)
+flutter build apk --release --flavor fdroid --dart-define-from-file=.env.json
 ```
 
 **CI/CD:** Instead of `local.properties`, set environment variables:
 - `ANDROID_STORE_PASSWORD`
 - `ANDROID_KEY_PASSWORD`
+
+Release signing is skipped automatically when the keystore file `android/app/key.jks` is absent — that's how F-Droid's buildserver produces an unsigned APK (which F-Droid then signs with its own key).
 
 ## Documentation
 

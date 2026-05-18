@@ -1,5 +1,6 @@
 FLUTTER := .fvm/flutter_sdk/bin/flutter
 CONFIG ?= .env.json
+FLAVOR ?= play
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	android-debug android-release android-bundle android-deploy \
@@ -32,10 +33,12 @@ help:
 	@echo ""
 	@echo "Options:"
 	@echo "  CONFIG            Config file for --dart-define-from-file (default: .env.json)"
+	@echo "  FLAVOR            Android flavor: play or fdroid (default: play)"
 	@echo "  DEVICE            Target device ID for ios-deploy targets"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
+	@echo "  make android-release FLAVOR=fdroid"
 	@echo "  make ios-deploy DEVICE=00008101-XXXX"
 	@echo "  make ios-ipa CONFIG=.env.local.json"
 
@@ -62,16 +65,16 @@ DEVICE ?= $(shell cat .selected_device 2>/dev/null)
 
 # Android
 android-debug: get
-	$(FLUTTER) build apk --debug --dart-define-from-file=$(CONFIG)
+	$(FLUTTER) build apk --debug --flavor $(FLAVOR) --dart-define-from-file=$(CONFIG)
 
 android-release: get
-	$(FLUTTER) build apk --release --dart-define-from-file=$(CONFIG)
+	$(FLUTTER) build apk --release --flavor $(FLAVOR) --dart-define-from-file=$(CONFIG)
 
 android-bundle: get
-	$(FLUTTER) build appbundle --release --dart-define-from-file=$(CONFIG)
+	$(FLUTTER) build appbundle --release --flavor $(FLAVOR) --dart-define-from-file=$(CONFIG)
 
 android-deploy: android-release
-	$(FLUTTER) install --release
+	$(FLUTTER) install --release --flavor $(FLAVOR)
 
 # iOS
 ios-debug: get

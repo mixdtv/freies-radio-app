@@ -41,10 +41,15 @@ dependencies:
   intl: ^0.20.2
   dio: ^5.4.0
   http: ^1.2.0
+  # Custom fork — one-line patch removing the position cap that breaks
+  # HLS-live progress display. Pinned to a commit SHA (not the `minor`
+  # branch tip) so builds are reproducible — fdroid's reviewers and your
+  # own CI can verify the dep doesn't shift under us.
+  # See docs/custom-just-audio-fork.md for the patch detail.
   just_audio: #0.9.36
     git:
       url: https://github.com/IgoTs/just_audio
-      ref: minor
+      ref: 2874d992a85fa0ac76467cfb7b381527b85c4277
       path: just_audio
   audio_service: ^0.18.13
   cached_network_image: ^3.3.1

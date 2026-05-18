@@ -41,20 +41,28 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "de.radiozeit.freiesradio"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
-
-        def date = new Date()
-        def formattedDate = date.format('dd_MM_yyyy-HH_mm_ss')
-        setProperty("archivesBaseName", "freiesradio" + versionCode + "(" + versionName + ")-" + formattedDate)
         archivesBaseName = "freiesradio-v$versionCode($versionName)"
     }
+
+    flavorDimensions "distribution"
+    productFlavors {
+        play {
+            dimension "distribution"
+        }
+        fdroid {
+            dimension "distribution"
+            // Separate install from the Play build so the two channels can
+            // coexist with different signing keys (F-Droid signs with its
+            // own key; Play uses key.jks).
+            applicationIdSuffix ".fdroid"
+        }
+    }
+
     signingConfigs {
         release {
             storeFile file("key.jks")
@@ -66,7 +74,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            // F-Droid's buildserver has no keystore — leave release unsigned
+            // there and let F-Droid sign with its own key post-build.
+            // Local + CI builds have key.jks and supply the password via
+            // env vars or local.properties (looked up in signingConfigs above).
+            if (file("key.jks").exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

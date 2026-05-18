@@ -457,7 +457,7 @@ packages:
     dependency: "direct main"
     description:
       path: just_audio
-      ref: minor
+      ref: "2874d992a85fa0ac76467cfb7b381527b85c4277"
       resolved-ref: "2874d992a85fa0ac76467cfb7b381527b85c4277"
       url: "https://github.com/IgoTs/just_audio"
     source: git
