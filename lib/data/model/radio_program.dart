@@ -47,10 +47,23 @@ class RadioEpg {
       broadcasterId: JsonMap.toStr(map['broadcaster_id']) ?? "",
       subheadline: JsonMap.toStr(map['subheadline']) ?? "",
       duration: JsonMap.toInt(map['duration']) ?? 0,
-      start: JsonMap.toDate(map['epgBroadcastStartTime'],"yyyy-MM-dd'T'HH:mm:ss") ?? DateTime.now(),
-      end: JsonMap.toDate(map['epgBroadcastEndTime'],"yyyy-MM-dd'T'HH:mm:ss")?? DateTime.now(),
+      start: _parseEpgTime(map['epgBroadcastStartTimeUtc'], map['epgBroadcastStartTime']),
+      end: _parseEpgTime(map['epgBroadcastEndTimeUtc'], map['epgBroadcastEndTime']),
       archiveDisabled: map['archiveDisabled'] == true,
     );
+  }
+
+  // Prefer the timezone-aware UTC field (added 2026-05); fall back to the
+  // legacy naive field (Europe/Berlin wall-clock parsed as device-local)
+  // so the app keeps working against older EPG deployments.
+  static DateTime _parseEpgTime(dynamic utcField, dynamic legacyField) {
+    if (utcField is String && utcField.isNotEmpty) {
+      final parsed = DateTime.tryParse(utcField);
+      if (parsed != null) {
+        return parsed.toLocal();
+      }
+    }
+    return JsonMap.toDate(legacyField, "yyyy-MM-dd'T'HH:mm:ss") ?? DateTime.now();
   }
 
   bool isOnAir(DateTime now) {
