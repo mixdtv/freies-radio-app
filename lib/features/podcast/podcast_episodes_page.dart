@@ -15,7 +15,7 @@ import 'package:radiozeit/features/radio_list/radio_list_page.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/utils/colors.dart';
 import 'package:radiozeit/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:radiozeit/utils/url_safety.dart';
 
 class PodcastEpisodesPage extends StatelessWidget {
   static const String path = "/PodcastEpisodesPage";
@@ -392,7 +392,7 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
           Html(
             data: widget.text,
             onLinkTap: (url, attributes, element) {
-              if (url != null) launchUrl(Uri.parse(url));
+              launchExternalUrl(url);
             },
             style: {
               "body": Style(
@@ -568,7 +568,7 @@ class _EpisodeItemState extends State<_EpisodeItem> {
                               Html(
                                 data: widget.episode.description,
                                 onLinkTap: (url, attributes, element) {
-                                  if (url != null) launchUrl(Uri.parse(url));
+                                  launchExternalUrl(url);
                                 },
                                 style: {
                                   "body": Style(

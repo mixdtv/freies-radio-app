@@ -32,9 +32,19 @@ class HttpApi {
             receiveTimeout: const Duration(seconds: 30),
             sendTimeout: const Duration(seconds: 30),
         )
-    )
-      ..interceptors.add(LogInterceptor(responseBody: true,requestBody: true,responseHeader: false,requestHeader: true))
-      ..transformer = BackgroundTransformer();
+    );
+    // Release builds: skip the verbose interceptor entirely — it would log
+    // X-API-KEY, X-App-User, request bodies (location coords, search terms)
+    // and full response bodies to logcat. Tree-shaken out by kDebugMode.
+    if (kDebugMode) {
+      dio.interceptors.add(LogInterceptor(
+        responseBody: true,
+        requestBody: true,
+        responseHeader: false,
+        requestHeader: true,
+      ));
+    }
+    dio.transformer = BackgroundTransformer();
   }
 
   setLogout(Function() logout) {

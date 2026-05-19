@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:radiozeit/utils/url_safety.dart';
 
 class RadioDescription extends StatelessWidget {
   final String text;
@@ -11,11 +11,7 @@ class RadioDescription extends StatelessWidget {
   Widget build(BuildContext context) {
     return Html(
       data: text,
-      onLinkTap: (url, attributes, element) {
-        if (url != null) {
-          launchUrl(Uri.parse(url));
-        }
-      },
+      onLinkTap: (url, attributes, element) => launchExternalUrl(url),
       style: {
         "body": Style(
           margin: Margins.zero,
