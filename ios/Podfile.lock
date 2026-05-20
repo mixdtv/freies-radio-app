@@ -12,6 +12,7 @@ PODS:
     - Flutter
   - geolocator_apple (1.2.0):
     - Flutter
+    - FlutterMacOS
   - just_audio (0.0.1):
     - Flutter
   - path_provider_foundation (0.0.1):
@@ -33,7 +34,7 @@ DEPENDENCIES:
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - Flutter (from `Flutter`)
   - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
-  - geolocator_apple (from `.symlinks/plugins/geolocator_apple/ios`)
+  - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - just_audio (from `.symlinks/plugins/just_audio/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -54,7 +55,7 @@ EXTERNAL SOURCES:
   flutter_native_splash:
     :path: ".symlinks/plugins/flutter_native_splash/ios"
   geolocator_apple:
-    :path: ".symlinks/plugins/geolocator_apple/ios"
+    :path: ".symlinks/plugins/geolocator_apple/darwin"
   just_audio:
     :path: ".symlinks/plugins/just_audio/ios"
   path_provider_foundation:
@@ -73,7 +74,7 @@ SPEC CHECKSUMS:
   device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_native_splash: 9e672d3818957718ee006a491730c09deeecace9
-  geolocator_apple: d981750b9f47dbdb02427e1476d9a04397beb8d9
+  geolocator_apple: ab36aa0e8b7d7a2d7639b3b4e48308394e8cef5e
   just_audio: 6c031bb61297cf218b4462be616638e81c058e97
   path_provider_foundation: 2a68637f8a62df7f6e790a428d1bdf72cb4e2d59
   shared_preferences_foundation: 4e65c567e7877037d328829a522222c938bf308c
