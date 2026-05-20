@@ -1,0 +1,14 @@
+# Dart packages excluded from the F-Droid build.
+#
+# Each package listed here is removed from pubspec.yaml by
+# scripts/prepare-fdroid-pubspec.py during the F-Droid build's prebuild step.
+# This is how we strip proprietary Google Play Services classes from the
+# F-Droid APK without forking those packages.
+#
+# When adding a new entry, also add a stub for any features it provides so
+# the app still compiles without those imports (see e.g.
+# lib/features/location/location_service_fdroid_stub.dart).
+
+# Pulls com.google.android.gms:play-services-location (FusedLocationProvider)
+geolocator
+geolocator_android

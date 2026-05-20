@@ -50,6 +50,10 @@ class LocationService {
     return  await Geolocator.isLocationServiceEnabled();
   }
 
+  static Future<void> openLocationSettings() async {
+    await Geolocator.openLocationSettings();
+  }
+
 
 
 

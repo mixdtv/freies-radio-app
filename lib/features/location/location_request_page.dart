@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radiozeit/app/widgets/buttons/color_button.dart';
 import 'package:radiozeit/features/location/location_cubit.dart';
@@ -98,7 +97,7 @@ class LocationRequestPage extends StatelessWidget {
           }, child: Text(AppLocalizations.of(context)!.cancel)),
           TextButton(onPressed: () {
             Navigator.of(context).pop();
-            Geolocator.openLocationSettings();
+            LocationService.openLocationSettings();
           }, child: Text(AppLocalizations.of(context)!.settings))
         ],
       );

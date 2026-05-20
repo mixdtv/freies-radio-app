@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    F-Droid-flavor manifest overlay.
+
+    The main manifest declares ACCESS_FINE_LOCATION and ACCESS_COARSE_LOCATION
+    because the Play/iOS build uses geolocator for nearby-station discovery.
+    The F-Droid build excludes geolocator from pubspec entirely (see
+    scripts/prepare-fdroid-pubspec.py + fdroid-exclude-deps.txt) and stubs
+    out LocationService, so the location feature is unavailable in the
+    F-Droid APK and these permissions would be vestigial. Remove them via
+    manifest merger so they don't show up in the F-Droid APK at all.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        tools:node="remove" />
+</manifest>
