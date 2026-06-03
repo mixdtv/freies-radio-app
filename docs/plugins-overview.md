@@ -111,9 +111,10 @@
   - Distance calculations
 - **Use Case:** Find local/nearby radio stations
 
-#### geolocator_android ^4.5.5
+#### geolocator_android ">=4.5.5 <4.6.0"
 - **Purpose:** Android-specific implementation for geolocator
 - **Reason:** Explicit dependency for Android location features
+- **⚠️ Pinned `<4.6.0`:** 4.6.0+ raises the Dart SDK floor to 3.5.0 and requires `flutter.compileSdkVersion`, which is only available on Flutter > 3.24. This project is on Flutter 3.22 (Dart 3.4), so the bump to 4.6.2 in commit `9110634` was reverted by `0549a53`. Do **not** unpin without first upgrading the Flutter toolchain.
 
 ### 🔧 Utilities
 
@@ -288,7 +289,7 @@
 | **go_router** | ^13.0.1 | 17.2.4 | 🔴 Major outdated | High |
 | **bloc** | ^8.1.2 | 9.1.0 | 🔴 Major outdated | High |
 | **flutter_bloc** | ^8.1.3 | 9.1.1 | 🔴 Major outdated | High |
-| **geolocator** | ^12.0.0 | 13.0.2 | 🔴 Major outdated | Medium |
+| **geolocator** | ^12.0.0 | 13.0.2 | 🔒 Held — geolocator_android pinned `<4.6.0` (Flutter 3.24+ required) | Blocked |
 | **cached_network_image** | ^3.3.1 | 3.4.1 | ⚠️ Minor outdated | Low |
 | **audio_service** | ^0.18.13 | 0.18.18 | ⚠️ Minor outdated | Low |
 | **shared_preferences** | ^2.2.2 | 2.5.3 | ⚠️ Minor outdated | Low |
@@ -359,11 +360,12 @@
 
 #### Medium Priority
 
-**3. Location (geolocator): 12.x → 13.x**
-- **Current:** ^12.0.0
+**3. Location (geolocator): 12.x → 13.x** — ⚠️ **BLOCKED**
+- **Current:** ^12.0.0 (with `geolocator_android` pinned `>=4.5.5 <4.6.0`)
 - **Latest:** 13.0.2
 - **Migration Required:** Possibly
 - **Effort:** Medium
+- **Blocker:** Newer geolocator_android (4.6.0+) needs Dart SDK ≥3.5.0 / `flutter.compileSdkVersion` (Flutter > 3.24). Upgrade the Flutter toolchain off 3.22 **before** unpinning. See commits `9110634` (failed bump) → `0549a53` (pin).
 
 **4. HTTP Client (dio): 5.4.0 → 5.9.0**
 - **Current:** ^5.4.0
@@ -437,7 +439,7 @@
 - [ ] Review bloc 9.0 migration guide
 - [ ] Update bloc and flutter_bloc to 9.x
 - [ ] Test all state management flows
-- [ ] Update geolocator to 14.x
+- [ ] ⚠️ Upgrade Flutter toolchain past 3.24 FIRST, then unpin `geolocator_android` (`<4.6.0`) and update geolocator
 - [ ] Test location features
 
 #### Phase 3: High-Risk Updates (Optional - Week 4-5)
