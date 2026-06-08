@@ -74,7 +74,7 @@ android-bundle: get
 	$(FLUTTER) build appbundle --release --flavor $(FLAVOR) --dart-define-from-file=$(CONFIG)
 
 android-deploy: android-release
-	$(FLUTTER) install --release --flavor $(FLAVOR)
+    $(FLUTTER) install --release --flavor $(FLAVOR) -d $(DEVICE)
 
 # iOS
 ios-debug: get
