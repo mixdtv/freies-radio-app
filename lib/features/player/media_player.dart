@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/cupertino.dart';
@@ -27,9 +28,49 @@ class MediaPlayer extends BaseAudioHandler {
   String? _archivePlaylistUrl;
   Map<String, String>? _archiveHeaders;
 
-  /// Exponential backoff state for stream restart
+  /// Exponential backoff state for stream restart. Auto-reconnects keep this
+  /// counter (they call [play], not [playMediaItem]), so the delay actually
+  /// escalates: 5, 10, 20, 40, 80, then capped at [_maxRestartDelaySec]. It is
+  /// only reset to 0 by a user-initiated [playMediaItem] or after the stream
+  /// has played steadily for [_sustainedPlaybackToReset] (see [_watchdogTick]).
   int _restartAttempts = 0;
-  static const int _maxRestartDelaySec = 300; // 5 minutes
+  static const int _maxRestartDelaySec = 120;
+
+  /// Stall watchdog for live streams.
+  ///
+  /// During a reception gap (tunnel, dead zone while driving) iOS's AVPlayer
+  /// can drop the connection to a live progressive stream and get stuck
+  /// `buffering` indefinitely — without ever emitting an error or `completed`
+  /// event. None of the event-based recovery triggers fire, so the player
+  /// sits silent until the app is restarted. The watchdog samples playback
+  /// position; if it stops advancing while we believe we're playing, it forces
+  /// a reconnect.
+  Timer? _watchdogTimer;
+  Duration _lastObservedPosition = Duration.zero;
+  DateTime _lastProgressTime = DateTime.now();
+  static const Duration _watchdogInterval = Duration(seconds: 5);
+  static const Duration _stallThreshold = Duration(seconds: 15);
+  /// How long the stream must play steadily before the reconnect backoff is
+  /// cleared. Keying off sustained progress (not a momentary `ready`) stops a
+  /// connect-then-stall stream from resetting the backoff into a tight loop.
+  static const Duration _sustainedPlaybackToReset = Duration(seconds: 30);
+  /// When the current uninterrupted run of playback progress began (null when
+  /// not progressing).
+  DateTime? _progressingSince;
+
+  /// Reconnect immediately when network connectivity returns.
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  /// Throttle connectivity-triggered reconnects so a flapping connection
+  /// (driving through patchy coverage) can't hammer reconnects.
+  DateTime? _lastConnectivityReconnect;
+
+  /// True once the user explicitly stopped playback. The watchdog keys off the
+  /// player's transient `playing` flag, which can briefly lag a `stop()`; this
+  /// records the user's intent so a stalled-then-stopped stream isn't revived.
+  bool _userStopped = false;
+
+  /// True once [destroy] has run; suppresses any late restart scheduling.
+  bool _disposed = false;
 
   /// Cumulative duration of all segments before the current one (for archive playback).
   double _segmentOffset = 0;
@@ -65,8 +106,104 @@ class MediaPlayer extends BaseAudioHandler {
       }
     });
 
+    _watchdogTimer = Timer.periodic(_watchdogInterval, (_) => _watchdogTick());
 
+    _connectivitySub = Connectivity()
+        .onConnectivityChanged
+        .listen(_onConnectivityChanged);
+  }
 
+  /// Periodically checks whether a live stream that should be playing has
+  /// stopped advancing, and forces a reconnect if it has stalled past the
+  /// threshold. See [_watchdogTimer].
+  void _watchdogTick() {
+    // Only monitor live playback that we believe is actively playing. In any
+    // other state, keep the progress marker fresh so we don't falsely flag a
+    // stall the moment playback (re)starts.
+    final now = DateTime.now();
+    if (_playbackType != PlaybackType.live ||
+        _isPaused ||
+        _userStopped ||
+        currentMedia == null ||
+        !_player.playing) {
+      _lastObservedPosition = _player.position;
+      _lastProgressTime = now;
+      _progressingSince = null;
+      return;
+    }
+
+    // Any change in position counts as progress — including a backward seek on
+    // a seekable live (HLS DVR) stream. Tracking a high-water-mark instead
+    // would flag healthy catch-up playback after a rewind as a false stall.
+    final position = _player.position;
+    if (position != _lastObservedPosition) {
+      _lastObservedPosition = position;
+      _lastProgressTime = now;
+      // Clear the backoff only after the stream has played steadily for a
+      // while, so a connect-then-stall flicker can't keep zeroing it.
+      _progressingSince ??= now;
+      if (_restartAttempts > 0 &&
+          now.difference(_progressingSince!) >= _sustainedPlaybackToReset) {
+        _log.info('Stream stable — resetting reconnect backoff');
+        _restartAttempts = 0;
+      }
+      return;
+    }
+
+    // Position hasn't advanced this tick. We deliberately do NOT clear
+    // _progressingSince here: a brief mid-stream rebuffer that self-recovers
+    // (never reaching the stall threshold) shouldn't restart the
+    // sustained-playback clock. The clock is reset only on an actual
+    // (re)start in play(); a genuine stall below triggers restartPlayer().
+
+    // Don't pile up restarts if one is already scheduled and waiting out its
+    // backoff.
+    if (restartTimer?.isActive ?? false) return;
+
+    final stalledFor = now.difference(_lastProgressTime);
+    if (stalledFor >= _stallThreshold) {
+      _log.warning(
+          'Live stream stalled ${stalledFor.inSeconds}s with no progress — reconnecting');
+      restartPlayer();
+    }
+  }
+
+  /// When connectivity returns after a gap, reconnect a stalled or retrying
+  /// live stream immediately instead of waiting out the backoff delay.
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final hasNetwork =
+        results.any((r) => r != ConnectivityResult.none);
+    if (!hasNetwork) return;
+    if (_playbackType != PlaybackType.live ||
+        _isPaused ||
+        _userStopped ||
+        currentMedia == null) return;
+
+    // Throttle: on a flapping connection, ignore regains that arrive right
+    // after a reconnect we just triggered. The watchdog still backstops a
+    // genuine stall within its threshold.
+    final now = DateTime.now();
+    if (_lastConnectivityReconnect != null &&
+        now.difference(_lastConnectivityReconnect!) < _stallThreshold) {
+      return;
+    }
+
+    final retryPending = restartTimer?.isActive ?? false;
+    final sinceProgress = now.difference(_lastProgressTime);
+    final stalled = _player.playing && sinceProgress >= _stallThreshold;
+
+    // Don't interrupt healthy playback (e.g. on a WiFi/cellular handoff while
+    // audio is still flowing) — only act if we're stalled or already retrying.
+    if (retryPending || stalled) {
+      _log.info(
+          'Connectivity regained (retryPending=$retryPending, stalled=$stalled) — reconnecting now');
+      _lastConnectivityReconnect = now;
+      // Reconnect immediately (immediate:true => 0s delay) but DON'T zero
+      // _restartAttempts — otherwise a flapping connection would reset the
+      // counter every regain and the backoff could never escalate. A genuine
+      // recovery clears the counter after sustained playback (see _watchdogTick).
+      restartPlayer(immediate: true);
+    }
   }
 
   @override
@@ -92,21 +229,36 @@ class MediaPlayer extends BaseAudioHandler {
 
 
 
-  restartPlayer() {
+  restartPlayer({bool immediate = false}) {
     restartTimer?.cancel();
-    // Don't restart archives - they use session-based playback
-    if (_playbackType == PlaybackType.archive) {
-      _log.info('Skipping restart for archive playback');
+    // Don't schedule restarts after teardown or after the user explicitly
+    // stopped — a late completed/error event must not resurrect the player.
+    // (play()/playMediaItem clear _userStopped before any legitimate restart.)
+    if (_disposed || _userStopped) return;
+    // Only live streams auto-restart. Archives use session-based playback and
+    // podcasts must not restart from position 0 (they stop on error/complete).
+    if (_playbackType == PlaybackType.archive ||
+        _playbackType == PlaybackType.podcast) {
+      _log.info('Skipping restart for $_playbackType playback');
       return;
     }
 
-    final delaySec = min(5 * pow(2, _restartAttempts).toInt(), _maxRestartDelaySec);
+    final delaySec = immediate
+        ? 0
+        : min(5 * pow(2, _restartAttempts).toInt(), _maxRestartDelaySec);
     _restartAttempts++;
     _log.info('Scheduling restart in ${delaySec}s (attempt $_restartAttempts)');
 
+    // Reset the stall marker so the watchdog gives the fresh connection a full
+    // grace period before considering it stalled again.
+    _lastProgressTime = DateTime.now();
+
     restartTimer = Timer(Duration(seconds: delaySec), () {
+      // Reconnect via play() rather than playMediaItem() so we DON'T reset
+      // _restartAttempts — that's what lets the backoff actually escalate
+      // across repeated failures instead of looping at the minimum delay.
       if (currentMedia != null) {
-        playMediaItem(currentMedia!);
+        play();
       }
     });
   }
@@ -114,7 +266,12 @@ class MediaPlayer extends BaseAudioHandler {
 
   @override
   playMediaItem(MediaItem item) async {
-    _playbackType = PlaybackType.live;
+    // Podcasts flow through playMediaItem too, but must NOT be treated as live:
+    // live streams auto-reconnect to the live edge, whereas a podcast restart
+    // would jump back to position 0 and lose the listener's place.
+    _playbackType = item.extras?['isPodcast'] == true
+        ? PlaybackType.podcast
+        : PlaybackType.live;
     _restartAttempts = 0;
     _isPaused = false;
     currentMedia = item;
@@ -137,6 +294,7 @@ class MediaPlayer extends BaseAudioHandler {
     _archiveHeaders = headers;
     await _player.stop();
     _isPaused = false;
+    _userStopped = false;
     currentMedia = item;
     mediaItem.add(item);
     restartTimer?.cancel();
@@ -246,6 +404,7 @@ class MediaPlayer extends BaseAudioHandler {
     _log.info('resume $currentMedia');
     if(currentMedia == null) return;
     _isPaused = false;
+    _userStopped = false;
     await _player.play();
     _notificationPlay();
   }
@@ -275,11 +434,19 @@ class MediaPlayer extends BaseAudioHandler {
 
     await _player.stop();
     _isPaused = false;
+    _userStopped = false;
     if(currentMedia == null) return;
 
     restartTimer?.cancel();
     position.value = 0;
     duration.value = 0;
+
+    // Give the new connection a full grace period before the watchdog may
+    // consider it stalled, and restart the sustained-playback clock so the
+    // backoff is only cleared after this fresh connection proves itself.
+    _lastObservedPosition = Duration.zero;
+    _lastProgressTime = DateTime.now();
+    _progressingSince = null;
 
 
     String url = currentMedia!.id;
@@ -310,6 +477,7 @@ class MediaPlayer extends BaseAudioHandler {
   stop() async {
     _log.info('stop $currentMedia');
     isLoading.value = false;
+    _userStopped = true;
     _notificationStop();
     restartTimer?.cancel();
     await _player.stop();
@@ -320,7 +488,10 @@ class MediaPlayer extends BaseAudioHandler {
 
   destroy() {
     _log.info('destroy');
+    _disposed = true;
     restartTimer?.cancel();
+    _watchdogTimer?.cancel();
+    _connectivitySub?.cancel();
     _player.dispose();
   }
 
@@ -397,7 +568,9 @@ class MediaPlayer extends BaseAudioHandler {
        isLoading.value = true;
      } else if(event.processingState == ProcessingState.ready && _player.playing) {
        isLoading.value = false;
-       _restartAttempts = 0;
+       // NB: do NOT reset _restartAttempts here — a momentary `ready` on a
+       // connect-then-stall stream would zero the backoff every cycle. The
+       // backoff is cleared only after sustained progress (see _watchdogTick).
      }
 
      isPlaying.value = _player.playing;

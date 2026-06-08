@@ -150,6 +150,7 @@ class PlayerCubit extends Cubit<PlayerCubitState> {
       album: podcastTitle,
       artist: episode.description,
       artUri: artUri,
+      extras: {'isPodcast': true},
     ));
   }
 

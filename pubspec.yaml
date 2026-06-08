@@ -68,6 +68,9 @@ dependencies:
   dart_rss: ^3.0.3
   logging: ^1.3.0
   flutter_html: ^3.0.0-beta.2
+  # Network reachability for live-stream reconnect after reception gaps.
+  # GMS-free (uses Android ConnectivityManager) — safe for the F-Droid build.
+  connectivity_plus: ^6.1.0
 
 
 dev_dependencies:
