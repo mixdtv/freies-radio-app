@@ -84,6 +84,20 @@ android {
         }
     }
 
+    // F-Droid builds one APK per ABI (flutter build apk --split-per-abi). Override
+    // the per-output version code to base * 10 + abi so it matches the
+    // VercodeOperation in the fdroiddata metadata (armeabi-v7a=1, arm64-v8a=2,
+    // x86_64=3). Non-split builds carry no ABI filter and keep the base code.
+    def abiVersionCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86_64": 3]
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            def abiCode = abiVersionCodes.get(output.getFilter(com.android.build.OutputFile.ABI))
+            if (abiCode != null) {
+                output.versionCodeOverride = variant.versionCode * 10 + abiCode
+            }
+        }
+    }
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging = false
