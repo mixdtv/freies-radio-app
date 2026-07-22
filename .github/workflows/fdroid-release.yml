@@ -65,6 +65,15 @@ jobs:
             -e KSPASS -e KEYPASS -e VERCODES -e METADATA_BRANCH \
             -e APP_ID="$APP_ID" -e KEY_ALIAS="$KEY_ALIAS" -e EXPECTED_SHA256="$EXPECTED_SHA256" \
             "$BUILDSERVER_IMAGE" bash -euxc '
+              # The buildserver image is the *build environment* (Android SDK at
+              # /opt/android-sdk) but does NOT ship the fdroid tool. Install it
+              # from Debian trixie so `fdroid build` is available. sdk_path is not
+              # set in config.yml, so fdroid falls back to $ANDROID_HOME (correct).
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y -qq --no-install-recommends fdroidserver
+              fdroid --version
+
               # fdroiddata metadata + recipe (public fork)
               git config --global --add safe.directory "*"
               cd /work
