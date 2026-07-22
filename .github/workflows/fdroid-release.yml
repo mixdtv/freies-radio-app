@@ -1,0 +1,135 @@
+name: F-Droid reproducible build & release
+
+# Builds the F-Droid (.fdroid) split APKs the exact way F-Droid's buildserver
+# does, signs F-Droid's own unsigned output with our upload key, verifies the
+# signer fingerprint, and publishes them as GitHub Release assets so F-Droid can
+# fetch them for reproducible-build verification (Binaries + AllowedAPKSigningKeys
+# in metadata/de.radiozeit.freiesradio.fdroid.yml).
+#
+# Why this reproduces: we do NOT rebuild the app ourselves and hope it matches.
+# We run `fdroid build` inside F-Droid's buildserver image, take the resulting
+# *unsigned* APK, and only add our signature. F-Droid's server produces the same
+# unsigned bytes, strips signatures for comparison, and matches ours.
+#
+# Runs manually. Requires these repo secrets:
+#   ANDROID_KEYSTORE_BASE64  - `base64 -w0 android/app/key.jks`
+#   ANDROID_STORE_PASSWORD   - keystore store password
+#   ANDROID_KEY_PASSWORD     - key password for alias `freies-radio`
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "App version name (release tag will be v<this>)"
+        default: "1.0.3"
+      metadata_branch:
+        description: "Branch on radiozeit/fdroiddata holding the metadata"
+        default: "add-freies-radio"
+      vercodes:
+        description: "Space-separated per-ABI version codes to build"
+        default: "211 212 213"
+      draft:
+        description: "Create the GitHub release as a draft"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # create the release / tag
+
+env:
+  APP_ID: de.radiozeit.freiesradio.fdroid
+  KEY_ALIAS: freies-radio
+  EXPECTED_SHA256: "292117c4bc8117f718b983072fdd199d9441df974bd4467024e4b3c350774d48"
+  BUILDSERVER_IMAGE: registry.gitlab.com/fdroid/fdroidserver:buildserver
+
+jobs:
+  build-sign-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare work dir and keystore
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/work/out"
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$GITHUB_WORKSPACE/work/key.jks"
+          test -s "$GITHUB_WORKSPACE/work/key.jks" || { echo "::error::keystore secret empty/invalid"; exit 1; }
+
+      - name: Build (fdroid) + sign inside F-Droid buildserver image
+        env:
+          KSPASS: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEYPASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERCODES: ${{ inputs.vercodes }}
+          METADATA_BRANCH: ${{ inputs.metadata_branch }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/work:/work" \
+            -e KSPASS -e KEYPASS -e VERCODES -e METADATA_BRANCH \
+            -e APP_ID="$APP_ID" -e KEY_ALIAS="$KEY_ALIAS" -e EXPECTED_SHA256="$EXPECTED_SHA256" \
+            "$BUILDSERVER_IMAGE" bash -euxc '
+              # fdroiddata metadata + recipe (public fork)
+              git config --global --add safe.directory "*"
+              cd /work
+              git clone --depth 1 --branch "$METADATA_BRANCH" \
+                https://gitlab.com/radiozeit/fdroiddata.git fdroiddata
+              cd fdroiddata
+
+              # Build each per-ABI vercode exactly as F-Droid does -> unsigned/
+              for vc in $VERCODES; do
+                fdroid build --verbose --no-tarball "${APP_ID}:${vc}"
+              done
+
+              # Locate build-tools for zipalign/apksigner
+              BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+              echo "Using build-tools: $BT"
+
+              for vc in $VERCODES; do
+                unsigned="unsigned/${APP_ID}_${vc}.apk"
+                test -f "$unsigned" || { echo "missing $unsigned"; ls -la unsigned || true; exit 1; }
+                aligned="/work/out/aligned_${vc}.apk"
+                signed="/work/out/freiesradio-fdroid-${vc}.apk"
+                "$BT/zipalign" -p -f 4 "$unsigned" "$aligned"
+                "$BT/apksigner" sign \
+                  --ks /work/key.jks --ks-key-alias "$KEY_ALIAS" \
+                  --ks-pass env:KSPASS --key-pass env:KEYPASS \
+                  --out "$signed" "$aligned"
+                rm -f "$aligned"
+
+                # Verify the signer certificate fingerprint matches the pinned key
+                got=$("$BT/apksigner" verify --print-certs "$signed" \
+                  | sed -nE "s/.*certificate SHA-256 digest: *([0-9a-fA-F]+).*/\1/p" | head -1 | tr A-Z a-z)
+                echo "vc=$vc signer SHA-256=$got"
+                if [ "$got" != "$EXPECTED_SHA256" ]; then
+                  echo "FINGERPRINT MISMATCH for $vc: got $got expected $EXPECTED_SHA256"; exit 1
+                fi
+              done
+              # Do not leak the keystore into any layer
+              rm -f /work/key.jks
+              ls -la /work/out
+            '
+
+      - name: Clean keystore from workspace
+        if: always()
+        run: rm -f "$GITHUB_WORKSPACE/work/key.jks"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: "v${{ inputs.version_name }}"
+          DRAFT: ${{ inputs.draft }}
+        run: |
+          set -euo pipefail
+          draft_flag=""
+          [ "$DRAFT" = "true" ] && draft_flag="--draft"
+          # Create the release+tag if absent, then (re)upload the signed APKs.
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" $draft_flag \
+              --title "$TAG" \
+              --notes "F-Droid (.fdroid flavor) reproducible split APKs, signed with the release key. Assets consumed by F-Droid for reproducible-build verification."
+          fi
+          gh release upload "$TAG" work/out/freiesradio-fdroid-*.apk --clobber
+
+      - name: Upload APKs as workflow artifact (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-signed-apks
+          path: work/out/freiesradio-fdroid-*.apk
+          if-no-files-found: error
