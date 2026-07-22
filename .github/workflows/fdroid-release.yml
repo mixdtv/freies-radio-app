@@ -74,6 +74,11 @@ jobs:
               apt-get install -y -qq --no-install-recommends fdroidserver
               fdroid --version
 
+              # ANDROID_HOME / LC_ALL are set only for login shells via profile.d;
+              # source it so fdroid build finds the SDK and matches F-Droid env.
+              . /etc/profile.d/bsenv.sh
+              echo "ANDROID_HOME=$ANDROID_HOME"
+
               # fdroiddata metadata + recipe (public fork)
               git config --global --add safe.directory "*"
               cd /work
@@ -86,24 +91,29 @@ jobs:
                 fdroid build --verbose --no-tarball "${APP_ID}:${vc}"
               done
 
-              # Locate build-tools for zipalign/apksigner
-              BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-              echo "Using build-tools: $BT"
+              # Locate zipalign/apksigner. fdroid build installs build-tools into
+              # $ANDROID_HOME/build-tools/<ver> during the build; fall back to the
+              # Debian-packaged tools (apksigner on PATH, zipalign under /usr/lib).
+              BT=$(ls -d "$ANDROID_HOME"/build-tools/*/ 2>/dev/null | sort -V | tail -1 || true)
+              ZIPALIGN="${BT}zipalign"; APKSIGNER="${BT}apksigner"
+              [ -x "$ZIPALIGN" ]  || ZIPALIGN=$(command -v zipalign  || echo /usr/lib/android-sdk/build-tools/debian/zipalign)
+              [ -x "$APKSIGNER" ] || APKSIGNER=$(command -v apksigner || echo /usr/bin/apksigner)
+              echo "Using zipalign=$ZIPALIGN apksigner=$APKSIGNER"
 
               for vc in $VERCODES; do
                 unsigned="unsigned/${APP_ID}_${vc}.apk"
                 test -f "$unsigned" || { echo "missing $unsigned"; ls -la unsigned || true; exit 1; }
                 aligned="/work/out/aligned_${vc}.apk"
                 signed="/work/out/freiesradio-fdroid-${vc}.apk"
-                "$BT/zipalign" -p -f 4 "$unsigned" "$aligned"
-                "$BT/apksigner" sign \
+                "$ZIPALIGN" -p -f 4 "$unsigned" "$aligned"
+                "$APKSIGNER" sign \
                   --ks /work/key.jks --ks-key-alias "$KEY_ALIAS" \
                   --ks-pass env:KSPASS --key-pass env:KEYPASS \
                   --out "$signed" "$aligned"
                 rm -f "$aligned"
 
                 # Verify the signer certificate fingerprint matches the pinned key
-                got=$("$BT/apksigner" verify --print-certs "$signed" \
+                got=$("$APKSIGNER" verify --print-certs "$signed" \
                   | sed -nE "s/.*certificate SHA-256 digest: *([0-9a-fA-F]+).*/\1/p" | head -1 | tr A-Z a-z)
                 echo "vc=$vc signer SHA-256=$got"
                 if [ "$got" != "$EXPECTED_SHA256" ]; then
