@@ -86,8 +86,9 @@ jobs:
               # fdroiddata checkout must live at /home/vagrant.
               # See https://f-droid.org/docs/Reproducible_Builds/
               git config --global --add safe.directory "*"
+              cd /work
               git clone --depth 1 --branch "$METADATA_BRANCH" \
-                https://gitlab.com/radiozeit/fdroiddata.git /work/fdroiddata
+                https://gitlab.com/radiozeit/fdroiddata.git fdroiddata
               cp -a /work/fdroiddata/. /home/vagrant/
               cd /home/vagrant
 
