@@ -79,17 +79,25 @@ jobs:
               . /etc/profile.d/bsenv.sh
               echo "ANDROID_HOME=$ANDROID_HOME"
 
-              # fdroiddata metadata + recipe (public fork)
+              # fdroiddata metadata + recipe (public fork). Build at the F-Droid
+              # buildserver path /home/vagrant/build/<appid> so the build-dir path
+              # embedded in libapp.so (Flutter/Dart AOT) matches F-Droid's and the
+              # APK reproduces. fdroid build uses <cwd>/build/<appid>, so the
+              # fdroiddata checkout must live at /home/vagrant.
+              # See https://f-droid.org/docs/Reproducible_Builds/
               git config --global --add safe.directory "*"
-              cd /work
               git clone --depth 1 --branch "$METADATA_BRANCH" \
-                https://gitlab.com/radiozeit/fdroiddata.git fdroiddata
-              cd fdroiddata
+                https://gitlab.com/radiozeit/fdroiddata.git /work/fdroiddata
+              cp -a /work/fdroiddata/. /home/vagrant/
+              cd /home/vagrant
 
-              # Build each per-ABI vercode exactly as F-Droid does -> unsigned/
+              # Build each per-ABI vercode -> /home/vagrant/unsigned/
               for vc in $VERCODES; do
                 fdroid build --verbose --no-tarball "${APP_ID}:${vc}"
               done
+
+              echo "=== unsigned APK sha256 (for reproducibility cross-check) ==="
+              sha256sum /home/vagrant/unsigned/${APP_ID}_*.apk || true
 
               # Locate zipalign/apksigner. fdroid build installs build-tools into
               # $ANDROID_HOME/build-tools/<ver> during the build; fall back to the
@@ -101,8 +109,8 @@ jobs:
               echo "Using zipalign=$ZIPALIGN apksigner=$APKSIGNER"
 
               for vc in $VERCODES; do
-                unsigned="unsigned/${APP_ID}_${vc}.apk"
-                test -f "$unsigned" || { echo "missing $unsigned"; ls -la unsigned || true; exit 1; }
+                unsigned="/home/vagrant/unsigned/${APP_ID}_${vc}.apk"
+                test -f "$unsigned" || { echo "missing $unsigned"; ls -la /home/vagrant/unsigned || true; exit 1; }
                 aligned="/work/out/aligned_${vc}.apk"
                 signed="/work/out/freiesradio-fdroid-${vc}.apk"
                 "$ZIPALIGN" -p -f 4 "$unsigned" "$aligned"
