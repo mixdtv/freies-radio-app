@@ -132,6 +132,7 @@ jobs:
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}   # gh has no git checkout to infer the repo from
           TAG: "v${{ inputs.version_name }}"
           DRAFT: ${{ inputs.draft }}
         run: |
