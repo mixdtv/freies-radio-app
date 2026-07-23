@@ -81,8 +81,9 @@ jobs:
 
               # fdroiddata metadata + recipe (public fork). Build at the F-Droid
               # buildserver path /home/vagrant/build/<appid> so the build-dir path
-              # embedded in libapp.so (Flutter/Dart AOT) matches F-Droid's and the
-              # APK reproduces. fdroid build uses <cwd>/build/<appid>, so the
+              # embedded in libapp.so (Flutter/Dart AOT) matches what the F-Droid
+              # buildserver uses and the APK reproduces. fdroid build uses
+              # <cwd>/build/<appid>, so the
               # fdroiddata checkout must live at /home/vagrant.
               # See https://f-droid.org/docs/Reproducible_Builds/
               git config --global --add safe.directory "*"
