@@ -1,20 +1,38 @@
-name: Play Store promote to production
+name: Play Store promote
 
-# Promotes an already-uploaded bundle from the internal track to production.
-# No rebuild — it moves the exact bundle you tested. Run it manually after you
-# have verified the internal build:
-#   gh workflow run "Play Store promote to production" -f version_code=22 -f rollout=1.0
+# Promotes an already-uploaded bundle from one track to another — no rebuild.
+# Typical ladder: internal (devs) -> "Closed testing - Beta" (15 testers) -> production.
+#   gh workflow run "Play Store promote" -f version_code=22 -f to_track="Closed testing - Beta"
+#   gh workflow run "Play Store promote" -f version_code=22 -f to_track=production -f rollout=1.0
 #
-# rollout: staged fraction 0.0-1.0. 1.0 = full release to everyone. 0.1 = 10%.
+# rollout: staged fraction 0.0-1.0 (mainly for production). 1.0 = full release.
 
 on:
   workflow_dispatch:
     inputs:
       version_code:
-        description: versionCode to promote from internal to production
+        description: versionCode to promote (must already exist in from_track)
         required: true
+      from_track:
+        description: Source track the build is already on
+        type: choice
+        options:
+          - internal
+          - "Closed testing - Beta"
+          - alpha
+          - beta
+        default: internal
+      to_track:
+        description: Destination track
+        type: choice
+        options:
+          - "Closed testing - Beta"
+          - alpha
+          - beta
+          - production
+        default: "Closed testing - Beta"
       rollout:
-        description: Staged rollout fraction (0.0-1.0; 1.0 = full)
+        description: Staged rollout fraction 0.0-1.0 (mainly for production)
         default: "1.0"
 
 permissions:
@@ -27,18 +45,20 @@ jobs:
   promote:
     runs-on: ubuntu-latest
     steps:
-      - name: Promote internal -> production (vc ${{ inputs.version_code }}, rollout ${{ inputs.rollout }})
+      - name: Promote "${{ inputs.from_track }}" -> "${{ inputs.to_track }}" (vc ${{ inputs.version_code }}, rollout ${{ inputs.rollout }})
         env:
           SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           VERSION_CODE: ${{ inputs.version_code }}
+          FROM_TRACK: ${{ inputs.from_track }}
+          TO_TRACK: ${{ inputs.to_track }}
           ROLLOUT: ${{ inputs.rollout }}
         run: |
           set -euo pipefail
           printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
           sudo gem install -N fastlane
           fastlane supply \
-            --track internal \
-            --track_promote_to production \
+            --track "$FROM_TRACK" \
+            --track_promote_to "$TO_TRACK" \
             --version_code "$VERSION_CODE" \
             --rollout "$ROLLOUT" \
             --json_key "$RUNNER_TEMP/sa.json" \
