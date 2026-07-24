@@ -77,8 +77,21 @@ jobs:
         run: |
           set -euo pipefail
           flutter pub get
+          # archivesBaseName in build.gradle renames the .aab (e.g.
+          # freiesradio-v21(1.0.3)-play-release.aab), so `flutter build appbundle`
+          # exits non-zero even though the bundle IS produced. Tolerate that exit
+          # and fail only if no .aab actually exists.
+          set +e
           flutter build appbundle --release --flavor play --dart-define-from-file=.env.json
-          echo "AAB=$(find build/app/outputs/bundle/playRelease -name '*.aab' | head -1)" >> "$GITHUB_ENV"
+          rc=$?
+          set -e
+          AAB=$(find build/app/outputs/bundle/playRelease -name '*.aab' 2>/dev/null | head -1 || true)
+          if [ -z "$AAB" ]; then
+            echo "::error::no .aab produced (flutter exit=$rc) — real build failure"
+            exit 1
+          fi
+          echo "Built AAB: $AAB (flutter exit was $rc)"
+          echo "AAB=$AAB" >> "$GITHUB_ENV"
 
       - name: Upload to Play track "${{ env.TRACK }}"
         env:
