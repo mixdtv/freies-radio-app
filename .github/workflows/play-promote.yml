@@ -17,16 +17,17 @@ on:
         description: Source track the build is already on
         type: choice
         options:
-          - internal
+          - closed-internal
           - "Closed testing - Beta"
           - alpha
           - beta
-        default: internal
+        default: closed-internal
       to_track:
         description: Destination track
         type: choice
         options:
           - "Closed testing - Beta"
+          - closed-internal
           - alpha
           - beta
           - production

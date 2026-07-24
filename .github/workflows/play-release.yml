@@ -1,4 +1,4 @@
-name: Play Store release (internal)
+name: Play Store release
 
 # Builds the signed Play App Bundle (play flavor) and uploads it to Google Play.
 # Pushing a tag vX.Y.Z ships to the INTERNAL TESTING track only (private to your
@@ -21,8 +21,12 @@ on:
       track:
         description: Play track to upload to
         type: choice
-        options: [internal, alpha, beta]
-        default: internal
+        options:
+          - closed-internal
+          - "Closed testing - Beta"
+          - alpha
+          - beta
+        default: closed-internal
       dry_run:
         description: Validate only — build + validate the upload, publish nothing
         type: boolean
@@ -34,7 +38,7 @@ permissions:
 env:
   PACKAGE_NAME: de.radiozeit.freiesradio
   FLUTTER_VERSION: "3.24.5"
-  TRACK: ${{ inputs.track || 'internal' }}
+  TRACK: ${{ inputs.track || 'closed-internal' }}
   DRY_RUN: ${{ inputs.dry_run || false }}
 
 jobs:

@@ -1,10 +1,12 @@
 FLUTTER := .fvm/flutter_sdk/bin/flutter
 CONFIG ?= .env.json
 FLAVOR ?= play
+ROLLOUT ?= 1.0
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	android-debug android-release android-bundle android-deploy \
-	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish
+	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
+	play-dry-run play-closed-internal play-beta play-production play-info fdroid-release
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -30,6 +32,14 @@ help:
 	@echo "  ios-deploy-release Build and install release app on device (requires DEVICE=<id>)"
 	@echo "  ios-ipa           Build IPA (App Store / TestFlight)"
 	@echo "  ios-publish       Build IPA and open archive in Xcode for distribution"
+	@echo ""
+	@echo "Deployment (CI via gh workflow — requires gh authenticated):"
+	@echo "  play-dry-run          Validate a Play build+upload (publishes nothing)"
+	@echo "  play-closed-internal  Build + upload to the closed-internal track"
+	@echo "  play-beta         Promote a build to 'Closed testing - Beta' (VC=<code>)"
+	@echo "  play-production   Promote a build to production (VC=<code> [ROLLOUT=1.0])"
+	@echo "  play-info         List Play tracks, releases and testers"
+	@echo "  fdroid-release    Build + sign + publish the F-Droid reproducible APKs"
 	@echo ""
 	@echo "Options:"
 	@echo "  CONFIG            Config file for --dart-define-from-file (default: .env.json)"
@@ -74,7 +84,7 @@ android-bundle: get
 	$(FLUTTER) build appbundle --release --flavor $(FLAVOR) --dart-define-from-file=$(CONFIG)
 
 android-deploy: android-release
-    $(FLUTTER) install --release --flavor $(FLAVOR) -d $(DEVICE)
+	$(FLUTTER) install --release --flavor $(FLAVOR) -d $(DEVICE)
 
 # iOS
 ios-debug: get
@@ -116,3 +126,28 @@ ios-ipa: get
 
 ios-publish: ios-ipa
 	open build/ios/archive/Runner.xcarchive
+
+# Deployment (CI). These dispatch GitHub Actions workflows via `gh`, which builds
+# and signs in CI using the repo secrets. Requires `gh` authenticated for the repo.
+
+# Google Play — tag→internal ladder: internal (devs) → beta group → production
+play-dry-run:
+	gh workflow run "Play Store release" -f dry_run=true
+
+play-closed-internal:
+	gh workflow run "Play Store release" -f dry_run=false
+
+play-beta:
+	@test -n "$(VC)" || { echo "Usage: make play-beta VC=<versionCode>"; exit 1; }
+	gh workflow run "Play Store promote" -f version_code=$(VC) -f to_track="Closed testing - Beta"
+
+play-production:
+	@test -n "$(VC)" || { echo "Usage: make play-production VC=<versionCode> [ROLLOUT=1.0]"; exit 1; }
+	gh workflow run "Play Store promote" -f version_code=$(VC) -f to_track=production -f rollout=$(ROLLOUT)
+
+play-info:
+	gh workflow run "Play Store info (read-only)"
+
+# F-Droid — reproducible build + sign + publish to GitHub releases
+fdroid-release:
+	gh workflow run "F-Droid reproducible build & release"
