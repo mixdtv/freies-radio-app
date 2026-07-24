@@ -1,0 +1,100 @@
+name: Play Store release (internal)
+
+# Builds the signed Play App Bundle (play flavor) and uploads it to Google Play.
+# Pushing a tag vX.Y.Z ships to the INTERNAL TESTING track only (private to your
+# testers, never public). Promotion to production is a separate manual workflow
+# (play-promote.yml). versionName/versionCode come from pubspec.yaml — bump them
+# before tagging.
+#
+# Required repo secrets:
+#   ANDROID_KEYSTORE_BASE64  - base64 of android/app/key.jks (already set)
+#   ANDROID_STORE_PASSWORD   - keystore store password       (already set)
+#   ANDROID_KEY_PASSWORD     - key password for alias freies-radio (already set)
+#   PLAY_ENV_JSON            - full contents of production .env.json
+#   PLAY_SERVICE_ACCOUNT_JSON- Google Play service-account key JSON
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play track to upload to
+        type: choice
+        options: [internal, alpha, beta]
+        default: internal
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: de.radiozeit.freiesradio
+  FLUTTER_VERSION: "3.24.5"
+  TRACK: ${{ inputs.track || 'internal' }}
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Flutter ${{ env.FLUTTER_VERSION }}
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/flutter.tar.xz" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+          tar xf "$RUNNER_TEMP/flutter.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Restore keystore and production env
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          PLAY_ENV_JSON: ${{ secrets.PLAY_ENV_JSON }}
+        run: |
+          set -euo pipefail
+          echo "$KEYSTORE_B64" | base64 -d > android/app/key.jks
+          test -s android/app/key.jks || { echo "::error::keystore secret empty"; exit 1; }
+          printf '%s' "$PLAY_ENV_JSON" > .env.json
+          test -s .env.json || { echo "::error::PLAY_ENV_JSON secret empty"; exit 1; }
+
+      - name: Build signed AAB (play flavor, production config)
+        env:
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build appbundle --release --flavor play --dart-define-from-file=.env.json
+          echo "AAB=$(find build/app/outputs/bundle/playRelease -name '*.aab' | head -1)" >> "$GITHUB_ENV"
+
+      - name: Upload to Play track "${{ env.TRACK }}"
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "${AAB:-}" || { echo "::error::no .aab produced"; exit 1; }
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          sudo gem install -N fastlane
+          fastlane supply \
+            --aab "$AAB" \
+            --track "$TRACK" \
+            --release_status completed \
+            --json_key "$RUNNER_TEMP/sa.json" \
+            --package_name "$PACKAGE_NAME" \
+            --skip_upload_apk true \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true \
+            --skip_upload_changelogs true
+
+      - name: Scrub secrets from workspace
+        if: always()
+        run: rm -f android/app/key.jks .env.json "$RUNNER_TEMP/sa.json"

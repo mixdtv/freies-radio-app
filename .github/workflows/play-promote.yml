@@ -1,0 +1,55 @@
+name: Play Store promote to production
+
+# Promotes an already-uploaded bundle from the internal track to production.
+# No rebuild — it moves the exact bundle you tested. Run it manually after you
+# have verified the internal build:
+#   gh workflow run "Play Store promote to production" -f version_code=22 -f rollout=1.0
+#
+# rollout: staged fraction 0.0-1.0. 1.0 = full release to everyone. 0.1 = 10%.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: versionCode to promote from internal to production
+        required: true
+      rollout:
+        description: Staged rollout fraction (0.0-1.0; 1.0 = full)
+        default: "1.0"
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: de.radiozeit.freiesradio
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote internal -> production (vc ${{ inputs.version_code }}, rollout ${{ inputs.rollout }})
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          ROLLOUT: ${{ inputs.rollout }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          sudo gem install -N fastlane
+          fastlane supply \
+            --track internal \
+            --track_promote_to production \
+            --version_code "$VERSION_CODE" \
+            --rollout "$ROLLOUT" \
+            --json_key "$RUNNER_TEMP/sa.json" \
+            --package_name "$PACKAGE_NAME" \
+            --skip_upload_aab true \
+            --skip_upload_apk true \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true \
+            --skip_upload_changelogs true
+
+      - name: Scrub service account key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
