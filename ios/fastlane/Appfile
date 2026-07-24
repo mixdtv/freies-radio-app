@@ -1,0 +1,2 @@
+app_identifier("de.radiozeit.freiesradio")
+# Auth is via App Store Connect API key (see Fastfile) — no apple_id needed.

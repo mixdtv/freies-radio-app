@@ -1,0 +1,70 @@
+name: iOS TestFlight
+
+# Builds the iOS app on a macOS runner and uploads to TestFlight via fastlane,
+# using App Store Connect API-key cloud signing (no manual certs, no Apple ID).
+# Runs manually; add a tag trigger later once it's proven.
+#
+# Required repo secrets:
+#   ASC_KEY_ID          - App Store Connect API key ID
+#   ASC_ISSUER_ID       - App Store Connect issuer ID
+#   ASC_KEY_P8_BASE64   - base64 of the AuthKey_XXXX.p8 (Admin-role key)
+#   PLAY_ENV_JSON       - production .env.json (reused; same app config)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.24.5"
+
+jobs:
+  testflight:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Flutter ${{ env.FLUTTER_VERSION }} (macOS arm64)
+        run: |
+          set -euo pipefail
+          curl -fsSL -o "$RUNNER_TEMP/flutter.zip" \
+            "https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_${FLUTTER_VERSION}-stable.zip"
+          unzip -q "$RUNNER_TEMP/flutter.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Tool versions
+        run: |
+          flutter --version
+          xcodebuild -version
+          fastlane --version | tail -1
+
+      - name: Restore build config + ASC API key
+        env:
+          PLAY_ENV_JSON: ${{ secrets.PLAY_ENV_JSON }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PLAY_ENV_JSON" > .env.json
+          test -s .env.json || { echo "::error::PLAY_ENV_JSON empty"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/asc"
+          echo "$ASC_KEY_P8_BASE64" | base64 -d > "$RUNNER_TEMP/asc/AuthKey.p8"
+          test -s "$RUNNER_TEMP/asc/AuthKey.p8" || { echo "::error::ASC_KEY_P8_BASE64 empty/invalid"; exit 1; }
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/asc/AuthKey.p8" >> "$GITHUB_ENV"
+
+      - name: Flutter iOS build (compile Dart + pods, no codesign)
+        run: |
+          set -euo pipefail
+          flutter pub get
+          flutter build ios --release --no-codesign --dart-define-from-file=.env.json
+
+      - name: Archive, sign (cloud) & upload to TestFlight
+        working-directory: ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: fastlane beta
+
+      - name: Scrub secrets
+        if: always()
+        run: rm -f .env.json "$RUNNER_TEMP/asc/AuthKey.p8"

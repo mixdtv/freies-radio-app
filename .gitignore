@@ -73,3 +73,6 @@ CLAUDE.md
 
 private_keys/
 backup_*/.venv-play/
+ios/fastlane/report.xml
+ios/fastlane/README.md
+ios/fastlane/test_output/

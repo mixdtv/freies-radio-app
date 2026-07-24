@@ -8,7 +8,8 @@ PLAY_VENV := .venv-play
 .PHONY: help clean get devices select-device bump bump-patch \
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
-	play-dry-run play-closed-internal play-push play-beta play-production play-info fdroid-release
+	play-dry-run play-closed-internal play-push play-beta play-production play-info \
+	ios-testflight fdroid-release
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -42,6 +43,7 @@ help:
 	@echo "  play-beta         Promote a build to 'Closed testing - Beta' (VC=<code>)"
 	@echo "  play-production   Promote a build to production (VC=<code> [ROLLOUT=1.0])"
 	@echo "  play-info         List Play tracks, releases and testers"
+	@echo "  ios-testflight    Build on macOS CI + upload to TestFlight (API-key signing)"
 	@echo "  fdroid-release    Build + sign + publish the F-Droid reproducible APKs"
 	@echo ""
 	@echo "Options:"
@@ -161,6 +163,10 @@ play-push:
 	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
 	@$(PLAY_VENV)/bin/pip install -q google-api-python-client google-auth
 	@$(PLAY_VENV)/bin/python scripts/play_set_track.py "$(SA_JSON)" "$(VC)" "$(TRACK_PUSH)"
+
+# Apple — build on macOS CI, cloud-sign via ASC API key, upload to TestFlight
+ios-testflight:
+	gh workflow run "iOS TestFlight"
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:

@@ -1,0 +1,46 @@
+default_platform(:ios)
+
+# Builds the Runner workspace (Flutter app already compiled by the workflow),
+# signs it via App Store Connect API-key cloud signing (-allowProvisioningUpdates),
+# and uploads to TestFlight. All auth comes from the API key — no Apple ID / 2FA.
+#
+# Required env (set by the workflow from repo secrets):
+#   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH (path to the .p8 file)
+
+platform :ios do
+  desc "Build and upload to TestFlight (API-key cloud signing)"
+  lane :beta do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],
+      duration: 1200,
+    )
+
+    build_app(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      # Cloud signing: let Xcode create/download the distribution cert + profile
+      # using the API key, so no certs need to live in the repo/CI.
+      xcargs: "-allowProvisioningUpdates " \
+              "-authenticationKeyPath #{ENV['ASC_KEY_PATH']} " \
+              "-authenticationKeyID #{ENV['ASC_KEY_ID']} " \
+              "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}",
+      export_options: {
+        signingStyle: "automatic",
+        teamID: "56QZLDW28L",
+      },
+      output_directory: "build",
+      output_name: "Runner.ipa",
+      clean: true,
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+    )
+  end
+end
