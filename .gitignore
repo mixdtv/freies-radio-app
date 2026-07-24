@@ -72,4 +72,4 @@ CLAUDE.md
 .selected_device
 
 private_keys/
-backup_*/
+backup_*/.venv-play/

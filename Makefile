@@ -2,11 +2,13 @@ FLUTTER := .fvm/flutter_sdk/bin/flutter
 CONFIG ?= .env.json
 FLAVOR ?= play
 ROLLOUT ?= 1.0
+SA_JSON ?= ../radiozeit-play-ci-serviceaccount.json
+PLAY_VENV := .venv-play
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
-	play-dry-run play-closed-internal play-beta play-production play-info fdroid-release
+	play-dry-run play-closed-internal play-push play-beta play-production play-info fdroid-release
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -35,7 +37,8 @@ help:
 	@echo ""
 	@echo "Deployment (CI via gh workflow — requires gh authenticated):"
 	@echo "  play-dry-run          Validate a Play build+upload (publishes nothing)"
-	@echo "  play-closed-internal  Build + upload to the closed-internal track"
+	@echo "  play-closed-internal  Build (CI) + upload a fresh AAB to closed-internal"
+	@echo "  play-push             Attach an already-built VC to a track, no rebuild (VC=<code>)"
 	@echo "  play-beta         Promote a build to 'Closed testing - Beta' (VC=<code>)"
 	@echo "  play-production   Promote a build to production (VC=<code> [ROLLOUT=1.0])"
 	@echo "  play-info         List Play tracks, releases and testers"
@@ -147,6 +150,17 @@ play-production:
 
 play-info:
 	gh workflow run "Play Store info (read-only)"
+
+# Direct push: attach an already-uploaded versionCode to a track (default
+# closed-internal) via the Play API — no CI, no rebuild. Needs the service-account
+# JSON locally (SA_JSON, default ../radiozeit-play-ci-serviceaccount.json).
+TRACK_PUSH ?= closed-internal
+play-push:
+	@test -n "$(VC)" || { echo "Usage: make play-push VC=<versionCode> [TRACK_PUSH=closed-internal] [SA_JSON=path]"; exit 1; }
+	@test -f "$(SA_JSON)" || { echo "service-account json not found: $(SA_JSON) (set SA_JSON=path)"; exit 1; }
+	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
+	@$(PLAY_VENV)/bin/pip install -q google-api-python-client google-auth
+	@$(PLAY_VENV)/bin/python scripts/play_set_track.py "$(SA_JSON)" "$(VC)" "$(TRACK_PUSH)"
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:
