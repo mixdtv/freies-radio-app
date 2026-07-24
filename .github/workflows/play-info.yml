@@ -1,0 +1,64 @@
+name: Play Store info (read-only)
+
+# Read-only: lists tracks, their releases (versionCode/status), and testers.
+# Creates a Play "edit" only to read, then deletes it — nothing is changed.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: de.radiozeit.freiesradio
+
+jobs:
+  info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Play tracks and testers
+        env:
+          SA_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
+          python3 -m pip install --quiet google-api-python-client google-auth
+          PKG="$PACKAGE_NAME" SA="$RUNNER_TEMP/sa.json" python3 <<'PY'
+          import os
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+
+          pkg = os.environ["PKG"]
+          creds = service_account.Credentials.from_service_account_file(
+              os.environ["SA"], scopes=["https://www.googleapis.com/auth/androidpublisher"])
+          svc = build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
+
+          edit = svc.edits().insert(packageName=pkg, body={}).execute()
+          eid = edit["id"]
+          try:
+              tracks = svc.edits().tracks().list(packageName=pkg, editId=eid).execute().get("tracks", [])
+              print(f"\n=== TRACKS for {pkg} ===")
+              for t in tracks:
+                  name = t.get("track")
+                  print(f"\n# track: {name}")
+                  rels = t.get("releases", []) or []
+                  if not rels:
+                      print("  (no releases)")
+                  for r in rels:
+                      vcs = r.get("versionCodes") or []
+                      print(f"  - name={r.get('name')!r} status={r.get('status')} "
+                            f"versionCodes={vcs} userFraction={r.get('userFraction')}")
+                  # testers (Google Groups) for this track
+                  try:
+                      tst = svc.edits().testers().get(packageName=pkg, editId=eid, track=name).execute()
+                      groups = tst.get("googleGroups") or []
+                      print(f"  testers.googleGroups: {groups if groups else '(none via API)'}")
+                  except Exception as e:
+                      print(f"  testers: (not available: {e.__class__.__name__})")
+          finally:
+              svc.edits().delete(packageName=pkg, editId=eid).execute()
+              print("\n(edit discarded — nothing changed)")
+          PY
+      - name: Cleanup
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
