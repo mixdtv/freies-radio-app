@@ -23,6 +23,10 @@ on:
         type: choice
         options: [internal, alpha, beta]
         default: internal
+      dry_run:
+        description: Validate only — build + validate the upload, publish nothing
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -31,6 +35,7 @@ env:
   PACKAGE_NAME: de.radiozeit.freiesradio
   FLUTTER_VERSION: "3.24.5"
   TRACK: ${{ inputs.track || 'internal' }}
+  DRY_RUN: ${{ inputs.dry_run || false }}
 
 jobs:
   build-and-upload:
@@ -83,10 +88,12 @@ jobs:
           test -n "${AAB:-}" || { echo "::error::no .aab produced"; exit 1; }
           printf '%s' "$SA_JSON" > "$RUNNER_TEMP/sa.json"
           sudo gem install -N fastlane
+          echo "validate_only=$DRY_RUN"
           fastlane supply \
             --aab "$AAB" \
             --track "$TRACK" \
             --release_status completed \
+            --validate_only "$DRY_RUN" \
             --json_key "$RUNNER_TEMP/sa.json" \
             --package_name "$PACKAGE_NAME" \
             --skip_upload_apk true \
