@@ -21,7 +21,10 @@ env:
 
 jobs:
   testflight:
-    runs-on: macos-14
+    # macos-26 (Xcode 26 / iOS 26 SDK). Apple rejects uploads built with an older
+    # SDK: "All iOS and iPadOS apps must be built with the iOS 26 SDK or later"
+    # (409 STATE_ERROR.VALIDATION_ERROR) — which is what macos-14/Xcode 15.4 hit.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -35,9 +38,15 @@ jobs:
 
       - name: Tool versions
         run: |
+          set -euo pipefail
           flutter --version
           xcodebuild -version
           fastlane --version | tail -1
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          echo "iphoneos SDK: $sdk"
+          # Fail here rather than after a full build + upload: altool rejects the
+          # ipa at the very end if the SDK is too old.
+          [ "${sdk%%.*}" -ge 26 ] || { echo "::error::iOS SDK $sdk is too old — Apple requires 26+"; exit 1; }
 
       - name: Restore build config + ASC API key
         env:
