@@ -1,0 +1,58 @@
+name: iOS TestFlight external
+
+# Hands an already-uploaded TestFlight build to an external beta group: submits it
+# for Beta App Review if that is still pending, then attaches it to the group.
+# No build, no upload — pure App Store Connect API, so this runs on Linux.
+# Counterpart of "Play Store promote" for the Apple side.
+#
+# Required repo secrets:
+#   ASC_KEY_ID          - App Store Connect API key ID
+#   ASC_ISSUER_ID       - App Store Connect issuer ID
+#   ASC_KEY_P8_BASE64   - base64 of the AuthKey_XXXX.p8 (Admin-role key)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build:
+        description: 'Build number (CFBundleVersion), or "latest"'
+        default: "latest"
+      group:
+        description: "External beta group"
+        default: "External-1"
+      dry_run:
+        description: "Only report what would happen"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Distribute to external group
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          BUILD: ${{ inputs.build }}
+          GROUP: ${{ inputs.group }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          echo "$ASC_KEY_P8_BASE64" | base64 -d > "$RUNNER_TEMP/AuthKey.p8"
+          test -s "$RUNNER_TEMP/AuthKey.p8" || { echo "::error::ASC_KEY_P8_BASE64 empty/invalid"; exit 1; }
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install -q pyjwt cryptography
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          "$RUNNER_TEMP/venv/bin/python" scripts/asc_distribute.py \
+            "$RUNNER_TEMP/AuthKey.p8" "$ASC_KEY_ID" "$ASC_ISSUER_ID" \
+            "$BUILD" "$GROUP" "${args[@]+"${args[@]}"}"
+
+      - name: Scrub secrets
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"

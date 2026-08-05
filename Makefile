@@ -7,13 +7,20 @@ PLAY_VENV := .venv-play
 ANDROID_SDK ?= $(HOME)/Library/Android/sdk
 ADB ?= $(shell command -v adb 2>/dev/null || echo $(ANDROID_SDK)/platform-tools/adb)
 SIM ?= iPhone 17
+# App Store Connect API key — same credentials as the ASC_* repo secrets, for the
+# local (non-CI) path of ios-external. Only the .p8 is sensitive.
+ASC_KEY ?= ../AuthKey_V8UH6AWJW9.p8
+ASC_KEY_ID ?= V8UH6AWJW9
+ASC_ISSUER_ID ?= 5d8c4905-9596-4fc4-9221-596ab5653283
+BUILD ?= latest
+GROUP ?= External-1
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	emulators ios-sim android-emu \
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
 	play-dry-run play-closed-internal play-push play-beta play-production play-info \
-	ios-testflight fdroid-release
+	ios-testflight ios-external ios-external-local fdroid-release
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -53,6 +60,8 @@ help:
 	@echo "  play-production   Promote a build to production (VC=<code> [ROLLOUT=1.0])"
 	@echo "  play-info         List Play tracks, releases and testers"
 	@echo "  ios-testflight    Build on macOS CI + upload to TestFlight (API-key signing)"
+	@echo "  ios-external      Submit a build for Beta App Review + give it to the external group"
+	@echo "  ios-external-local  Same, run here with the local .p8 instead of CI"
 	@echo "  fdroid-release    Build + sign + publish the F-Droid reproducible APKs"
 	@echo ""
 	@echo "Options:"
@@ -61,6 +70,9 @@ help:
 	@echo "  DEVICE            Target device ID for ios-deploy targets"
 	@echo "  SIM               iOS simulator name or udid for ios-sim (default: $(SIM))"
 	@echo "  AVD               Android AVD name for android-emu (default: first available)"
+	@echo "  BUILD             Build number for ios-external (default: $(BUILD))"
+	@echo "  GROUP             External beta group for ios-external (default: $(GROUP))"
+	@echo "  DRY               Set to 1 to only report what ios-external would do"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
@@ -225,6 +237,20 @@ play-push:
 # Apple — build on macOS CI, cloud-sign via ASC API key, upload to TestFlight
 ios-testflight:
 	gh workflow run "iOS TestFlight"
+
+# Hand an already-uploaded build to the external beta group (Beta App Review +
+# group assignment). Internal testers get every build without any of this.
+ios-external:
+	gh workflow run "iOS TestFlight external" -f build=$(BUILD) -f group="$(GROUP)" -f dry_run=$(if $(DRY),true,false)
+
+# Same thing straight from here, using the local .p8 instead of the repo secrets
+# — like play-push. DRY=1 only reports what would happen.
+ios-external-local:
+	@test -f "$(ASC_KEY)" || { echo "ASC key not found: $(ASC_KEY) (set ASC_KEY=path)"; exit 1; }
+	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
+	@$(PLAY_VENV)/bin/pip install -q pyjwt cryptography
+	@$(PLAY_VENV)/bin/python scripts/asc_distribute.py \
+		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" "$(GROUP)" $(if $(DRY),--dry-run,)
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:
