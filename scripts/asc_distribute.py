@@ -8,11 +8,13 @@ ones do, and Apple only hands the build to those testers once it is approved.
 
 Usage: asc_distribute.py <AuthKey.p8> <key_id> <issuer_id> [build] [group]
                          [--whats-new TEXT] [--locale de-DE] [--dry-run]
-  build   build number (CFBundleVersion), or "latest" (default)
+  build   build number (CFBundleVersion), an App Store Connect build id,
+          or "latest" (default)
   group   external beta group name (default: External-1)
 """
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -24,6 +26,7 @@ BUNDLE_ID = "de.radiozeit.freiesradio"
 API = "https://api.appstoreconnect.apple.com"
 DEFAULT_GROUP = "External-1"
 DEFAULT_LOCALE = "de-DE"
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 
 
 class ApiError(RuntimeError):
@@ -46,7 +49,7 @@ def call(token: str, method: str, path: str, body=None):
         "Content-Type": "application/json",
     })
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             raw = resp.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
@@ -68,13 +71,27 @@ def find_app(token: str) -> str:
 
 
 def find_build(token: str, app_id: str, wanted: str):
+    if UUID_RE.match(wanted):
+        return call(token, "GET", f"/v1/builds/{wanted}")["data"]
     if wanted == "latest":
         query = f"/v1/builds?filter[app]={app_id}&limit=1&sort=-uploadedDate"
     else:
-        query = f"/v1/builds?filter[app]={app_id}&filter[version]={wanted}&limit=1"
-    builds = call(token, "GET", query)["data"]
+        # Build numbers only have to be unique within a version train, so the
+        # same number can come back for several versions. Never guess which one.
+        query = (f"/v1/builds?filter[app]={app_id}&filter[version]={wanted}&limit=10"
+                 f"&sort=-uploadedDate&include=preReleaseVersion")
+    result = call(token, "GET", query)
+    builds = result["data"]
     if not builds:
         raise ApiError(f"no build {wanted!r} for app {app_id}")
+    if len(builds) > 1:
+        trains = {x["id"]: x["attributes"].get("version")
+                  for x in result.get("included", [])}
+        options = ", ".join(
+            f"{trains.get((b.get('relationships', {}).get('preReleaseVersion', {}).get('data') or {}).get('id'), '?')}"
+            f" build {b['attributes'].get('version')}" for b in builds)
+        raise ApiError(f"build {wanted!r} is ambiguous — matches: {options}. "
+                       f"Pass the App Store Connect build id instead.")
     return builds[0]
 
 

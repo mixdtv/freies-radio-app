@@ -5,7 +5,7 @@ The bundle must already exist in the app (uploaded by an earlier release run).
 This just makes that versionCode the active release on the given track.
 
 Usage: play_set_track.py <service_account.json> <versionCode> <track> [name]
-                         [--notes TEXT] [--language de-DE]
+                         [--notes TEXT | --notes-file PATH] [--language de-DE]
 
 Without --notes the release goes out without release notes: a track update
 replaces the whole release object, so notes are not carried over from the
@@ -47,6 +47,10 @@ def main() -> int:
     if name:
         release["name"] = name
     if a.notes:
+        if len(a.notes) > 500:
+            print(f"release notes are {len(a.notes)} characters; Play allows 500",
+                  file=sys.stderr)
+            return 2
         release["releaseNotes"] = [{"language": a.language, "text": a.notes}]
     try:
         svc.edits().tracks().update(

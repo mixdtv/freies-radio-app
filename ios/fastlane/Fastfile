@@ -1,3 +1,6 @@
+require "fileutils"
+require "shellwords"
+
 default_platform(:ios)
 
 # Builds the Runner workspace (Flutter app already compiled by the workflow),
@@ -10,6 +13,10 @@ default_platform(:ios)
 platform :ios do
   desc "Build and upload to TestFlight (API-key cloud signing)"
   lane :beta do
+    %w[ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH].each do |var|
+      UI.user_error!("#{var} is not set") if ENV[var].to_s.empty?
+    end
+
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
@@ -35,12 +42,17 @@ platform :ios do
       configuration: "Release",
       # Cloud signing: let Xcode create/download the distribution cert + profile
       # using the API key, so no certs need to live in the repo/CI.
-      xcargs: auth_args.join(" "),
+      xcargs: auth_args.map { |arg| Shellwords.escape(arg) }.join(" "),
       skip_package_ipa: true,
       clean: true,
     )
 
-    export_dir = File.expand_path("../build", __dir__)
+    # Export into an empty directory, so the glob below cannot pick up an ipa
+    # left over from an earlier run (CI is always clean, a dev machine is not).
+    export_dir = File.expand_path("../build/export", __dir__)
+    FileUtils.rm_rf(export_dir)
+    FileUtils.mkdir_p(export_dir)
+
     sh(
       "xcodebuild", "-exportArchive",
       "-archivePath", lane_context[SharedValues::XCODEBUILD_ARCHIVE],
@@ -50,9 +62,11 @@ platform :ios do
     )
 
     # xcodebuild names the ipa after the app, not the scheme ("Runner.ipa"),
-    # so pick up whatever it wrote.
-    ipa_path = Dir.glob(File.join(export_dir, "*.ipa")).max_by { |f| File.mtime(f) }
-    UI.user_error!("No .ipa in #{export_dir}") if ipa_path.nil?
+    # so pick up whatever it wrote — but only if that is unambiguous.
+    ipas = Dir.glob(File.join(export_dir, "*.ipa"))
+    UI.user_error!("expected exactly one .ipa in #{export_dir}, found #{ipas.size}: " \
+                   "#{ipas.map { |f| File.basename(f) }.join(', ')}") unless ipas.size == 1
+    ipa_path = ipas.first
     UI.message("Exported ipa: #{ipa_path}")
 
     upload_to_testflight(

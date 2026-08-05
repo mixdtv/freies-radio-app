@@ -247,8 +247,13 @@ ios-testflight:
 # Hand an already-uploaded build to the external beta group (Beta App Review +
 # group assignment). Internal testers get every build without any of this.
 ios-external:
+	@notes="$(WHATS_NEW)"; \
+	if [ -n "$(WHATS_NEW_FILE)" ]; then \
+	  test -f "$(WHATS_NEW_FILE)" || { echo "notes file not found: $(WHATS_NEW_FILE)"; exit 1; }; \
+	  notes=$$(cat "$(WHATS_NEW_FILE)"); \
+	fi; \
 	gh workflow run "iOS TestFlight external" -f build=$(BUILD) -f group="$(GROUP)" \
-		-f whats_new="$(WHATS_NEW)" -f dry_run=$(if $(DRY),true,false)
+		-f whats_new="$$notes" -f dry_run=$(if $(DRY),true,false)
 
 # Same thing straight from here, using the local .p8 instead of the repo secrets
 # — like play-push. DRY=1 only reports what would happen.
