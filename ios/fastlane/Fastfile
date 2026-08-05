@@ -17,28 +17,41 @@ platform :ios do
       duration: 1200,
     )
 
+    auth_args = [
+      "-allowProvisioningUpdates",
+      "-authenticationKeyPath", ENV["ASC_KEY_PATH"],
+      "-authenticationKeyID", ENV["ASC_KEY_ID"],
+      "-authenticationKeyIssuerID", ENV["ASC_ISSUER_ID"],
+    ]
+
+    # Archive only. gym still writes "method: app-store" into its generated
+    # export plist (its export_method option rejects the Xcode 26 name
+    # "app-store-connect"), and Xcode 26's exportArchive then dies with
+    # "The data couldn't be read because it isn't in the correct format".
+    # So the export below is done by hand with ExportOptions.plist.
     build_app(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
       configuration: "Release",
-      export_method: "app-store",
       # Cloud signing: let Xcode create/download the distribution cert + profile
       # using the API key, so no certs need to live in the repo/CI.
-      xcargs: "-allowProvisioningUpdates " \
-              "-authenticationKeyPath #{ENV['ASC_KEY_PATH']} " \
-              "-authenticationKeyID #{ENV['ASC_KEY_ID']} " \
-              "-authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']}",
-      export_options: {
-        signingStyle: "automatic",
-        teamID: "56QZLDW28L",
-      },
-      output_directory: "build",
-      output_name: "Runner.ipa",
+      xcargs: auth_args.join(" "),
+      skip_package_ipa: true,
       clean: true,
+    )
+
+    export_dir = File.expand_path("../build", __dir__)
+    sh(
+      "xcodebuild", "-exportArchive",
+      "-archivePath", lane_context[SharedValues::XCODEBUILD_ARCHIVE],
+      "-exportPath", export_dir,
+      "-exportOptionsPlist", File.expand_path("ExportOptions.plist", __dir__),
+      *auth_args,
     )
 
     upload_to_testflight(
       api_key: api_key,
+      ipa: File.join(export_dir, "Runner.ipa"),
       skip_waiting_for_build_processing: true,
       distribute_external: false,
     )

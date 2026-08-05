@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Xcode 26 renamed the export methods: "app-store" is deprecated in favour
+	     of "app-store-connect". fastlane's export_method option still rejects the
+	     new name, so the Fastfile archives with gym and runs xcodebuild
+	     -exportArchive itself with this plist. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>56QZLDW28L</string>
+	<!-- The build number comes from pubspec (`make bump`); don't let Xcode
+	     rewrite it during export. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

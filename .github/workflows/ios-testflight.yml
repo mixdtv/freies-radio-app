@@ -74,6 +74,22 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: fastlane beta
 
+      # exportArchive reports most failures as a generic "The data couldn't be
+      # read because it isn't in the correct format"; the real reason is in the
+      # .xcdistributionlogs bundle it leaves in TMPDIR.
+      - name: Export/signing logs on failure
+        if: failure()
+        run: |
+          for d in "${TMPDIR:-/tmp}"/*.xcdistributionlogs; do
+            [ -d "$d" ] || continue
+            echo "===== $d"
+            find "$d" -type f | while read -r f; do echo "--- $f"; tail -100 "$f"; done
+          done
+          for f in "$HOME"/Library/Logs/gym/*.log; do
+            [ -f "$f" ] || continue
+            echo "===== $f"; tail -150 "$f"
+          done
+
       - name: Scrub secrets
         if: always()
         run: rm -f .env.json "$RUNNER_TEMP/asc/AuthKey.p8"
