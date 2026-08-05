@@ -1,0 +1,4 @@
+• Fuzzy-Suche für Sendungen – findet auch bei Tippfehlern
+• Wiedergabe läuft nach Verbindungsabbrüchen automatisch weiter
+• Sendersortierung jetzt auch ohne Standortfreigabe
+• Kleinere Fehlerbehebungen

@@ -131,9 +131,14 @@ def main() -> int:
     p.add_argument("group", nargs="?", default=DEFAULT_GROUP)
     p.add_argument("--whats-new", default=None,
                    help="release notes for this build (what testers see)")
+    p.add_argument("--whats-new-file", default=None,
+                   help="read the release notes from this file (for multi-line text)")
     p.add_argument("--locale", default=DEFAULT_LOCALE)
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
+    if a.whats_new_file:
+        with open(a.whats_new_file) as fh:
+            a.whats_new = fh.read().strip()
     p8, key_id, issuer_id = a.p8, a.key_id, a.issuer_id
     wanted, group_name, dry_run = a.build, a.group, a.dry_run
 

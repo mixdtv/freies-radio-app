@@ -116,8 +116,10 @@ jobs:
             --skip_upload_apk true \
             --skip_upload_metadata true \
             --skip_upload_images true \
-            --skip_upload_screenshots true \
-            --skip_upload_changelogs true
+            --skip_upload_screenshots true
+          # Changelogs are NOT skipped: supply picks up
+          # fastlane/metadata/android/<lang>/changelogs/<versionCode>.txt.
+          # A build without such a file simply ships without release notes.
 
       - name: Scrub secrets from workspace
         if: always()

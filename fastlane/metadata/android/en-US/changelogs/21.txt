@@ -1,0 +1,4 @@
+• Fuzzy search for programmes – finds matches despite typos
+• Playback resumes automatically after a connection drop
+• Station sorting now works without location access
+• Minor bug fixes

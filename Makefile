@@ -15,6 +15,8 @@ ASC_ISSUER_ID ?= 5d8c4905-9596-4fc4-9221-596ab5653283
 BUILD ?= latest
 GROUP ?= External-1
 WHATS_NEW ?=
+# Multi-line release notes: point at a file instead (make cannot pass newlines).
+WHATS_NEW_FILE ?=
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	emulators ios-sim android-emu \
@@ -74,7 +76,8 @@ help:
 	@echo "  BUILD             Build number for ios-external (default: $(BUILD))"
 	@echo "  GROUP             External beta group for ios-external (default: $(GROUP))"
 	@echo "  DRY               Set to 1 to only report what ios-external would do"
-	@echo "  WHATS_NEW         Release notes for ios-external (what testers see)"
+	@echo "  WHATS_NEW         Release notes for ios-external / play-push (what users see)"
+	@echo "  WHATS_NEW_FILE    Same, read from a file (use this for multi-line notes)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
@@ -234,7 +237,8 @@ play-push:
 	@test -f "$(SA_JSON)" || { echo "service-account json not found: $(SA_JSON) (set SA_JSON=path)"; exit 1; }
 	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
 	@$(PLAY_VENV)/bin/pip install -q google-api-python-client google-auth
-	@$(PLAY_VENV)/bin/python scripts/play_set_track.py "$(SA_JSON)" "$(VC)" "$(TRACK_PUSH)"
+	@$(PLAY_VENV)/bin/python scripts/play_set_track.py "$(SA_JSON)" "$(VC)" "$(TRACK_PUSH)" \
+		$(if $(WHATS_NEW),--notes "$(WHATS_NEW)",) $(if $(WHATS_NEW_FILE),--notes-file "$(WHATS_NEW_FILE)",)
 
 # Apple — build on macOS CI, cloud-sign via ASC API key, upload to TestFlight
 ios-testflight:
@@ -254,7 +258,8 @@ ios-external-local:
 	@$(PLAY_VENV)/bin/pip install -q pyjwt cryptography
 	@$(PLAY_VENV)/bin/python scripts/asc_distribute.py \
 		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" "$(GROUP)" \
-		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(DRY),--dry-run,)
+		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(WHATS_NEW_FILE),--whats-new-file "$(WHATS_NEW_FILE)",) \
+		$(if $(DRY),--dry-run,)
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:
