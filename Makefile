@@ -4,8 +4,12 @@ FLAVOR ?= play
 ROLLOUT ?= 1.0
 SA_JSON ?= ../radiozeit-play-ci-serviceaccount.json
 PLAY_VENV := .venv-play
+ANDROID_SDK ?= $(HOME)/Library/Android/sdk
+ADB ?= $(shell command -v adb 2>/dev/null || echo $(ANDROID_SDK)/platform-tools/adb)
+SIM ?= iPhone 17
 
 .PHONY: help clean get devices select-device bump bump-patch \
+	emulators ios-sim android-emu \
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
 	play-dry-run play-closed-internal play-push play-beta play-production play-info \
@@ -21,6 +25,11 @@ help:
 	@echo "  bump              Increment build number in pubspec.yaml"
 	@echo "  bump-patch        Bump patch version and reset build number to 1"
 	@echo "  select-device     Select and save device for deploy targets"
+	@echo ""
+	@echo "Emulators:"
+	@echo "  emulators         List available iOS simulators and Android AVDs"
+	@echo "  ios-sim           Boot an iOS simulator and open Simulator.app (SIM=<name|udid>)"
+	@echo "  android-emu       Start an Android emulator and wait for boot (AVD=<name>)"
 	@echo ""
 	@echo "Android:"
 	@echo "  android-debug     Build debug APK"
@@ -50,12 +59,16 @@ help:
 	@echo "  CONFIG            Config file for --dart-define-from-file (default: .env.json)"
 	@echo "  FLAVOR            Android flavor: play or fdroid (default: play)"
 	@echo "  DEVICE            Target device ID for ios-deploy targets"
+	@echo "  SIM               iOS simulator name or udid for ios-sim (default: $(SIM))"
+	@echo "  AVD               Android AVD name for android-emu (default: first available)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
 	@echo "  make android-release FLAVOR=fdroid"
 	@echo "  make ios-deploy DEVICE=00008101-XXXX"
 	@echo "  make ios-ipa CONFIG=.env.local.json"
+	@echo "  make ios-sim SIM='iPhone 16e'"
+	@echo "  make android-emu AVD=Medium_Phone_API_36.1"
 
 # General
 clean:
@@ -77,6 +90,51 @@ select-device:
 	echo "$$device" > .selected_device
 
 DEVICE ?= $(shell cat .selected_device 2>/dev/null)
+
+# Emulators — start a simulator/emulator so the deploy targets have a device to
+# talk to. Both print the device id to pass on as DEVICE=<id>.
+emulators:
+	@echo "iOS simulators:"
+	@xcrun simctl list devices available -j | python3 -c "import sys,json; \
+	  d=json.load(sys.stdin)['devices']; \
+	  [print(f\"  {x['name']:24s} {x['udid']}  [{rt.split('SimRuntime.')[-1]}]{' (booted)' if x['state']=='Booted' else ''}\") \
+	   for rt in sorted(d, reverse=True) if 'iOS' in rt for x in d[rt]]" 2>/dev/null \
+	  || echo "  (xcrun simctl unavailable — Xcode installed?)"
+	@echo ""
+	@echo "Android AVDs:"
+	@$(FLUTTER) emulators 2>/dev/null | awk -F' *• *' '/• *android *$$/ {printf "  %s (%s)\n", $$1, $$2}' \
+	  || echo "  (none — create one in Android Studio)"
+
+ios-sim:
+	@udid=$$(xcrun simctl list devices available -j | python3 -c "import sys,json; \
+	  d=json.load(sys.stdin)['devices']; \
+	  c=[x for rt in sorted(d, reverse=True) if 'iOS' in rt for x in d[rt]]; \
+	  m=[x for x in c if '$(SIM)' in (x['name'], x['udid'])] or [x for x in c if '$(SIM)'.lower() in x['name'].lower()]; \
+	  print(([x for x in m if x['state']=='Booted'] or m)[0]['udid'] if m else '')"); \
+	test -n "$$udid" || { echo "No iOS simulator matches SIM='$(SIM)' — see: make emulators"; exit 1; }; \
+	xcrun simctl boot "$$udid" 2>/dev/null || true; \
+	open -a Simulator; \
+	xcrun simctl bootstatus "$$udid" -b >/dev/null; \
+	echo "iOS simulator ready: $$udid"; \
+	echo "  make ios-deploy DEVICE=$$udid"
+
+android-emu:
+	@avd="$(AVD)"; \
+	if [ -z "$$avd" ]; then \
+	  avd=$$($(FLUTTER) emulators 2>/dev/null | awk -F' *• *' '/• *android *$$/ {print $$1; exit}'); \
+	fi; \
+	test -n "$$avd" || { echo "No Android AVD found — create one in Android Studio."; exit 1; }; \
+	test -x "$(ADB)" || { echo "adb not found at $(ADB) (set ADB=<path> or ANDROID_SDK=<path>)"; exit 1; }; \
+	echo "Launching Android emulator: $$avd"; \
+	$(FLUTTER) emulators --launch "$$avd"; \
+	for i in $$(seq 1 120); do \
+	  [ "$$($(ADB) shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] && break; \
+	  sleep 2; \
+	done; \
+	serial=$$($(ADB) devices | awk '/emulator-.*device$$/ {print $$1; exit}'); \
+	test -n "$$serial" || { echo "Emulator did not finish booting in time."; exit 1; }; \
+	echo "Android emulator ready: $$serial"; \
+	echo "  make android-deploy DEVICE=$$serial"
 
 # Android
 android-debug: get
