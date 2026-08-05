@@ -49,9 +49,15 @@ platform :ios do
       *auth_args,
     )
 
+    # xcodebuild names the ipa after the app, not the scheme ("Runner.ipa"),
+    # so pick up whatever it wrote.
+    ipa_path = Dir.glob(File.join(export_dir, "*.ipa")).max_by { |f| File.mtime(f) }
+    UI.user_error!("No .ipa in #{export_dir}") if ipa_path.nil?
+    UI.message("Exported ipa: #{ipa_path}")
+
     upload_to_testflight(
       api_key: api_key,
-      ipa: File.join(export_dir, "Runner.ipa"),
+      ipa: ipa_path,
       skip_waiting_for_build_processing: true,
       distribute_external: false,
     )
