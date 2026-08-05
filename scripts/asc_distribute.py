@@ -6,10 +6,12 @@ This submits it for Beta App Review when that is still pending and attaches it t
 the group — no rebuild, no upload. Internal groups never need a review; external
 ones do, and Apple only hands the build to those testers once it is approved.
 
-Usage: asc_distribute.py <AuthKey.p8> <key_id> <issuer_id> [build] [group] [--dry-run]
+Usage: asc_distribute.py <AuthKey.p8> <key_id> <issuer_id> [build] [group]
+                         [--whats-new TEXT] [--locale de-DE] [--dry-run]
   build   build number (CFBundleVersion), or "latest" (default)
   group   external beta group name (default: External-1)
 """
+import argparse
 import json
 import sys
 import time
@@ -21,6 +23,7 @@ import jwt
 BUNDLE_ID = "de.radiozeit.freiesradio"
 API = "https://api.appstoreconnect.apple.com"
 DEFAULT_GROUP = "External-1"
+DEFAULT_LOCALE = "de-DE"
 
 
 class ApiError(RuntimeError):
@@ -99,15 +102,40 @@ def check_review_info(token: str, app_id: str) -> list:
     return missing
 
 
+def set_whats_new(token: str, build_id: str, text: str, locale: str) -> str:
+    """Set the release notes testers see. Separate from the upload because
+    fastlane can only attach them while waiting for processing, which would
+    keep the macOS runner busy for another ten minutes."""
+    existing = call(token, "GET", f"/v1/builds/{build_id}/betaBuildLocalizations")["data"]
+    for loc in existing:
+        if loc["attributes"].get("locale") == locale:
+            call(token, "PATCH", f"/v1/betaBuildLocalizations/{loc['id']}", {
+                "data": {"type": "betaBuildLocalizations", "id": loc["id"],
+                         "attributes": {"whatsNew": text}},
+            })
+            return f"updated {locale} release notes"
+    call(token, "POST", "/v1/betaBuildLocalizations", {
+        "data": {"type": "betaBuildLocalizations",
+                 "attributes": {"locale": locale, "whatsNew": text},
+                 "relationships": {"build": {"data": {"type": "builds", "id": build_id}}}},
+    })
+    return f"added {locale} release notes"
+
+
 def main() -> int:
-    args = [a for a in sys.argv[1:] if a != "--dry-run"]
-    dry_run = "--dry-run" in sys.argv[1:]
-    if len(args) < 3:
-        print(__doc__, file=sys.stderr)
-        return 2
-    p8, key_id, issuer_id = args[0], args[1], args[2]
-    wanted = args[3] if len(args) > 3 else "latest"
-    group_name = args[4] if len(args) > 4 else DEFAULT_GROUP
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("p8")
+    p.add_argument("key_id")
+    p.add_argument("issuer_id")
+    p.add_argument("build", nargs="?", default="latest")
+    p.add_argument("group", nargs="?", default=DEFAULT_GROUP)
+    p.add_argument("--whats-new", default=None,
+                   help="release notes for this build (what testers see)")
+    p.add_argument("--locale", default=DEFAULT_LOCALE)
+    p.add_argument("--dry-run", action="store_true")
+    a = p.parse_args()
+    p8, key_id, issuer_id = a.p8, a.key_id, a.issuer_id
+    wanted, group_name, dry_run = a.build, a.group, a.dry_run
 
     token = make_token(p8, key_id, issuer_id)
     app_id = find_app(token)
@@ -140,9 +168,14 @@ def main() -> int:
 
     needs_submission = state == "READY_FOR_BETA_SUBMISSION"
     if dry_run:
+        if a.whats_new is not None:
+            print(f"\n[dry-run] would set {a.locale} release notes to:\n{a.whats_new}")
         print("\n[dry-run] would " + ("submit for Beta App Review and " if needs_submission else "")
               + f"attach the build to {group_name!r}")
         return 0
+
+    if a.whats_new is not None:
+        print(set_whats_new(token, bid, a.whats_new, a.locale))
 
     if needs_submission:
         call(token, "POST", "/v1/betaAppReviewSubmissions", {

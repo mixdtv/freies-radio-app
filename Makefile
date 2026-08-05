@@ -14,6 +14,7 @@ ASC_KEY_ID ?= V8UH6AWJW9
 ASC_ISSUER_ID ?= 5d8c4905-9596-4fc4-9221-596ab5653283
 BUILD ?= latest
 GROUP ?= External-1
+WHATS_NEW ?=
 
 .PHONY: help clean get devices select-device bump bump-patch \
 	emulators ios-sim android-emu \
@@ -73,6 +74,7 @@ help:
 	@echo "  BUILD             Build number for ios-external (default: $(BUILD))"
 	@echo "  GROUP             External beta group for ios-external (default: $(GROUP))"
 	@echo "  DRY               Set to 1 to only report what ios-external would do"
+	@echo "  WHATS_NEW         Release notes for ios-external (what testers see)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
@@ -241,7 +243,8 @@ ios-testflight:
 # Hand an already-uploaded build to the external beta group (Beta App Review +
 # group assignment). Internal testers get every build without any of this.
 ios-external:
-	gh workflow run "iOS TestFlight external" -f build=$(BUILD) -f group="$(GROUP)" -f dry_run=$(if $(DRY),true,false)
+	gh workflow run "iOS TestFlight external" -f build=$(BUILD) -f group="$(GROUP)" \
+		-f whats_new="$(WHATS_NEW)" -f dry_run=$(if $(DRY),true,false)
 
 # Same thing straight from here, using the local .p8 instead of the repo secrets
 # — like play-push. DRY=1 only reports what would happen.
@@ -250,7 +253,8 @@ ios-external-local:
 	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
 	@$(PLAY_VENV)/bin/pip install -q pyjwt cryptography
 	@$(PLAY_VENV)/bin/python scripts/asc_distribute.py \
-		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" "$(GROUP)" $(if $(DRY),--dry-run,)
+		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" "$(GROUP)" \
+		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(DRY),--dry-run,)
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:

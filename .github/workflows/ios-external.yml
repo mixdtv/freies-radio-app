@@ -19,6 +19,9 @@ on:
       group:
         description: "External beta group"
         default: "External-1"
+      whats_new:
+        description: "Release notes for this build (leave empty to keep the current ones)"
+        default: ""
       dry_run:
         description: "Only report what would happen"
         type: boolean
@@ -40,6 +43,7 @@ jobs:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
           BUILD: ${{ inputs.build }}
           GROUP: ${{ inputs.group }}
+          WHATS_NEW: ${{ inputs.whats_new }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -48,6 +52,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install -q pyjwt cryptography
           args=()
+          if [ -n "$WHATS_NEW" ]; then args+=(--whats-new "$WHATS_NEW"); fi
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           "$RUNNER_TEMP/venv/bin/python" scripts/asc_distribute.py \
             "$RUNNER_TEMP/AuthKey.p8" "$ASC_KEY_ID" "$ASC_ISSUER_ID" \
