@@ -23,7 +23,7 @@ WHATS_NEW_FILE ?=
 	android-debug android-release android-bundle android-deploy \
 	ios-debug ios-release ios-deploy ios-deploy-release ios-ipa ios-publish \
 	play-dry-run play-closed-internal play-push play-beta play-production play-info \
-	ios-testflight ios-external ios-external-local fdroid-release
+	ios-testflight ios-external ios-external-local ios-production fdroid-release
 
 help:
 	@echo "Usage: make <target> [CONFIG=<config-file>]"
@@ -65,6 +65,7 @@ help:
 	@echo "  ios-testflight    Build on macOS CI + upload to TestFlight (API-key signing)"
 	@echo "  ios-external      Submit a build for Beta App Review + give it to the external group"
 	@echo "  ios-external-local  Same, run here with the local .p8 instead of CI"
+	@echo "  ios-production    Prepare (and with SUBMIT=1 submit) an App Store release"
 	@echo "  fdroid-release    Build + sign + publish the F-Droid reproducible APKs"
 	@echo ""
 	@echo "Options:"
@@ -78,6 +79,8 @@ help:
 	@echo "  DRY               Set to 1 to only report what ios-external would do"
 	@echo "  WHATS_NEW         Release notes for ios-external / play-push (what users see)"
 	@echo "  WHATS_NEW_FILE    Same, read from a file (use this for multi-line notes)"
+	@echo "  SUBMIT            Set to 1 to really submit ios-production to App Store review"
+	@echo "  RELEASE           ios-production: 'manual' holds the release after approval"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
@@ -265,6 +268,20 @@ ios-external-local:
 		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" "$(GROUP)" \
 		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(WHATS_NEW_FILE),--whats-new-file "$(WHATS_NEW_FILE)",) \
 		$(if $(DRY),--dry-run,)
+
+# Apple — App Store release: create/attach the store version for an uploaded
+# build and hand it to App Store review. SUBMIT=1 actually submits; without it
+# the version is only prepared and stays editable in App Store Connect.
+# RELEASE=manual holds the release until you press the button.
+ios-production:
+	@test -f "$(ASC_KEY)" || { echo "ASC key not found: $(ASC_KEY) (set ASC_KEY=path)"; exit 1; }
+	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
+	@$(PLAY_VENV)/bin/pip install -q pyjwt cryptography
+	@$(PLAY_VENV)/bin/python scripts/asc_release.py \
+		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" \
+		--release-type $(if $(filter manual,$(RELEASE)),MANUAL,AFTER_APPROVAL) \
+		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(WHATS_NEW_FILE),--whats-new-file "$(WHATS_NEW_FILE)",) \
+		$(if $(SUBMIT),--submit,) $(if $(DRY),--dry-run,)
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:
