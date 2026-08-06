@@ -33,8 +33,12 @@ def main() -> int:
     p.add_argument("--language", default=DEFAULT_LANGUAGE)
     a = p.parse_args()
     if a.notes_file:
-        with open(a.notes_file) as fh:
-            a.notes = fh.read().strip()
+        try:
+            with open(a.notes_file) as fh:
+                a.notes = fh.read().strip()
+        except OSError as exc:
+            print(f"cannot read notes file: {exc}", file=sys.stderr)
+            return 2
     sa, vc, track, name = a.service_account_json, a.version_code, a.track, a.name
 
     creds = service_account.Credentials.from_service_account_file(

@@ -154,8 +154,11 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
     if a.whats_new_file:
-        with open(a.whats_new_file) as fh:
-            a.whats_new = fh.read().strip()
+        try:
+            with open(a.whats_new_file) as fh:
+                a.whats_new = fh.read().strip()
+        except OSError as exc:
+            raise ApiError(f"cannot read notes file: {exc}") from None
     p8, key_id, issuer_id = a.p8, a.key_id, a.issuer_id
     wanted, group_name, dry_run = a.build, a.group, a.dry_run
 

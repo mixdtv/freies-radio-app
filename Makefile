@@ -80,7 +80,8 @@ help:
 	@echo "  WHATS_NEW         Release notes for ios-external / play-push (what users see)"
 	@echo "  WHATS_NEW_FILE    Same, read from a file (use this for multi-line notes)"
 	@echo "  SUBMIT            Set to 1 to really submit ios-production to App Store review"
-	@echo "  RELEASE           ios-production: 'manual' holds the release after approval"
+	@echo "  RELEASE           ios-production: 'auto' releases right after approval (default: manual)"
+	@echo "  PHASED            ios-production: set to 1 to roll out over 7 days"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make android-release"
@@ -275,13 +276,15 @@ ios-external-local:
 # RELEASE=manual holds the release until you press the button.
 ios-production:
 	@test -f "$(ASC_KEY)" || { echo "ASC key not found: $(ASC_KEY) (set ASC_KEY=path)"; exit 1; }
+	@test -z "$(WHATS_NEW_FILE)" || test -f "$(WHATS_NEW_FILE)" || \
+		{ echo "notes file not found: $(WHATS_NEW_FILE)"; exit 1; }
 	@test -d $(PLAY_VENV) || python3 -m venv $(PLAY_VENV)
 	@$(PLAY_VENV)/bin/pip install -q pyjwt cryptography
 	@$(PLAY_VENV)/bin/python scripts/asc_release.py \
 		"$(ASC_KEY)" "$(ASC_KEY_ID)" "$(ASC_ISSUER_ID)" "$(BUILD)" \
-		--release-type $(if $(filter manual,$(RELEASE)),MANUAL,AFTER_APPROVAL) \
+		--release-type $(if $(filter auto,$(RELEASE)),AFTER_APPROVAL,MANUAL) $(if $(filter 1 yes true,$(PHASED)),--phased,) \
 		$(if $(WHATS_NEW),--whats-new "$(WHATS_NEW)",) $(if $(WHATS_NEW_FILE),--whats-new-file "$(WHATS_NEW_FILE)",) \
-		$(if $(SUBMIT),--submit,) $(if $(DRY),--dry-run,)
+		$(if $(filter 1 yes true,$(SUBMIT)),--submit,) $(if $(DRY),--dry-run,)
 
 # F-Droid — reproducible build + sign + publish to GitHub releases
 fdroid-release:
