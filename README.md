@@ -201,9 +201,14 @@ flutter build apk --release --flavor fdroid --dart-define-from-file=.env.json
 
 Release signing is skipped automatically when the keystore file `android/app/key.jks` is absent — that's how F-Droid's buildserver produces an unsigned APK (which F-Droid then signs with its own key).
 
+## Publishing
+
+The commands above build locally. To publish to Google Play, TestFlight, the App Store or F-Droid, use the `make` targets described in **[docs/releasing.md](docs/releasing.md)** — they dispatch GitHub Actions workflows, so the signing keys stay in GitHub secrets and a release can be triggered from any machine with `gh` installed. `make help` lists every target.
+
 ## Documentation
 
 Additional documentation can be found in the `docs/` folder:
+- [Releasing](docs/releasing.md) - publishing to Play, the App Store and F-Droid
 - [Build Versions](docs/build-versions.md) - SDK and tool versions for Android/iOS builds
 - [BLoC Architecture](docs/bloc-architecture.md)
 - [Custom Just Audio Fork](docs/custom-just-audio-fork.md)
