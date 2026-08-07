@@ -55,7 +55,7 @@ The ladder is `closed-internal` → `Closed testing - Beta` → `production`.
 make play-info                      # what is on which track right now
 make play-dry-run                   # build + validate the upload, publishes nothing
 make play-closed-internal           # build in CI, upload to closed-internal
-make play-beta VC=22                # promote to the beta group (15 testers)
+make play-beta VC=22                # promote to the closed beta group
 make play-production VC=22          # promote to production
 make play-production VC=22 ROLLOUT=0.2   # staged rollout to 20 % of users
 ```
@@ -120,7 +120,9 @@ make fdroid-release
 
 Builds the reproducible APKs, signs them and publishes them as a GitHub
 release. F-Droid's own buildserver then rebuilds from source and compares the
-result; the app is only published there once that matches. The build steps live
+result; the app is only published there once that matches. It is published:
+[f-droid.org/packages/de.radiozeit.freiesradio.fdroid](https://f-droid.org/packages/de.radiozeit.freiesradio.fdroid/),
+as three per-ABI split APKs. The build steps live
 in `.github/workflows/fdroid-release.yml`, the app's F-Droid metadata in the
 `fdroiddata` fork (`metadata/de.radiozeit.freiesradio.fdroid.yml`).
 
@@ -164,8 +166,7 @@ out of any repo. They are the same credentials as the `PLAY_SERVICE_ACCOUNT_JSON
 and `ASC_KEY_P8_BASE64` secrets — only the key ID and issuer ID are harmless
 enough to sit in the `Makefile`.
 
-`ios-production` has no CI counterpart yet, so an App Store release currently
-requires the `.p8` locally. Everything else is reachable with `gh` alone.
+Everything except those three is reachable with `gh` alone.
 
 Local targets create a Python virtualenv (`.venv-play/`) on first use and
 install what they need; nothing to set up by hand.
@@ -179,21 +180,34 @@ make ios-production DRY=1          # what a store release would do
 make play-dry-run                  # validate a Play upload (after a bump)
 ```
 
-## Known constraints
+## Already handled — don't undo these
+
+Each of these cost a failed release run once. The setup works around them; the
+notes are here so a future cleanup doesn't reintroduce them.
 
 - **iOS builds run on `macos-26`.** Apple rejects uploads built with an SDK
-  older than iOS 26, and the job asserts the SDK version before building rather
-  than failing after the upload.
+  older than iOS 26, and `macos-14` ships Xcode 15.4. The job asserts the SDK
+  version in its first minute rather than failing after a full build and upload.
 - **The export uses `ios/fastlane/ExportOptions.plist`**, not gym's generated
-  one, because Xcode 26 only accepts the export method name
-  `app-store-connect` and fastlane cannot emit it.
-- **The Program License Agreement blocks everything Apple** when unsigned —
-  every API call returns 403 `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`.
-  Only the Account Holder can accept it at developer.apple.com/account.
+  one: Xcode 26 renamed the export method to `app-store-connect`, and fastlane's
+  `export_method` validates against a hardcoded list that predates the rename
+  and overwrites `export_options[:method]`. So the lane archives with
+  `skip_package_ipa` and runs `xcodebuild -exportArchive` itself.
+- **The Program License Agreement is accepted** (August 2026). If Apple issues a
+  new one, every API call starts returning 403
+  `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED` and only the Account Holder
+  can accept it at developer.apple.com/account. Nothing in this repo can fix it,
+  and `make ios-external-local DRY=1` surfaces it in seconds.
+
+## Still open
+
 - **`MinimumOSVersion` is 12.0** and Apple wants 13.0 during 2026 and 15.0 from
-  spring 2027. Raising it means changing `ios/Podfile` (both the `platform` line
-  and the `post_install` override), `ios/Runner.xcodeproj/project.pbxproj` and
-  `ios/Flutter/AppFrameworkInfo.plist` together.
+  spring 2027. Uploads still succeed, with an ITMS-90068 warning by mail.
+  Raising it means changing `ios/Podfile` (both the `platform` line and the
+  `post_install` override), `ios/Runner.xcodeproj/project.pbxproj` (6
+  occurrences) and `ios/Flutter/AppFrameworkInfo.plist` together.
+- **`ios-production` has no CI counterpart**, so an App Store release needs the
+  `.p8` locally. Everything else runs from GitHub Actions.
 - **The F-Droid signing key is permanent.** `android/app/key.jks` is pinned by
   `AllowedAPKSigningKeys` in F-Droid's metadata; losing it ends F-Droid updates
-  for this app.
+  for this app. It belongs in the password manager, not just on one laptop.
