@@ -1,0 +1,7 @@
+• Programme guide: the date now stays pinned while you scroll
+• New button jumps back to the show that is currently on
+• The show you are listening to is marked separately
+• A note when a station has nothing scheduled, including when the next show starts
+• Stations now reliably open at the current show
+• English app language: weekdays and dates are localised properly
+• Minor bug fixes

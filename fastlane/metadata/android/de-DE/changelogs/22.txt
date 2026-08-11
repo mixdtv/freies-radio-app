@@ -1,0 +1,7 @@
+• Programmplaner: Das Datum bleibt beim Scrollen oben stehen
+• Neuer Button springt zurück zur laufenden Sendung
+• Die Sendung, die du gerade hörst, ist eigens markiert
+• Hinweis, wenn ein Sender gerade nichts im Programm hat – samt nächster Sendung
+• Sender öffnen jetzt zuverlässig bei der aktuellen Sendung
+• Englische App-Sprache: Wochentage und Datumsangaben korrekt übersetzt
+• Kleinere Fehlerbehebungen
