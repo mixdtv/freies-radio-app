@@ -62,5 +62,6 @@
     "error_connection_refused": "Server nicht erreichbar. Bitte versuche es später erneut.",
     "timeline_no_shows": "Keine Sendungen verfügbar",
     "date_today": "Heute",
-    "date_tomorrow": "Morgen"
+    "date_tomorrow": "Morgen",
+    "player_archive": "Archiv"
 }

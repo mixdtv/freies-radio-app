@@ -534,7 +534,8 @@ class _EpisodeItemState extends State<_EpisodeItem> {
                   const SizedBox(height: 4),
                   if (widget.episode.pubDate != null)
                     Text(
-                      DateFormat('MMM d, yyyy').format(widget.episode.pubDate!),
+                      DateFormat.yMMMd(Localizations.localeOf(context).toLanguageTag())
+                          .format(widget.episode.pubDate!),
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade600,

@@ -5,6 +5,7 @@ import 'package:radiozeit/features/player/media_player.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
 import 'package:radiozeit/utils/extensions.dart';
+import 'package:radiozeit/l10n/app_localizations.dart';
 
 /// Full-screen expanded player view inspired by the DLF app.
 ///
@@ -217,7 +218,9 @@ class ExpandedPlayer extends StatelessWidget {
       icon = Icons.podcasts;
     } else if (isArchive) {
       final program = playerState.currentArchiveProgram!;
-      label = 'Archiv · ${DateFormat('d. MMM').format(program.start)}';
+      final locale = Localizations.localeOf(context).toLanguageTag();
+      label = '${AppLocalizations.of(context)?.player_archive ?? ''} · '
+          '${DateFormat.MMMd(locale).format(program.start)}';
       icon = Icons.history;
     } else {
       label = 'Live';
@@ -294,7 +297,8 @@ class ExpandedPlayer extends StatelessWidget {
     if (isPodcast) {
       final ep = playerState.currentPodcastEpisode!;
       subtitle = ep.pubDate != null
-          ? DateFormat('MMM d, yyyy').format(ep.pubDate!)
+          ? DateFormat.yMMMd(Localizations.localeOf(context).toLanguageTag())
+              .format(ep.pubDate!)
           : ep.description;
     } else if (isArchive) {
       final prog = playerState.currentArchiveProgram!;

@@ -8,6 +8,7 @@ import 'package:radiozeit/features/player/media_player.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/player/widgets/expanded_player.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
+import 'package:radiozeit/l10n/app_localizations.dart';
 
 /// Compact mini player bar displayed at the bottom of the app.
 ///
@@ -69,6 +70,7 @@ class PlayerControls extends StatelessWidget {
                               Expanded(
                                 child: isArchive
                                     ? _buildArchiveText(
+                                        context,
                                         playerState.currentArchiveProgram!,
                                         textTheme)
                                     : isPodcast
@@ -202,15 +204,17 @@ class PlayerControls extends StatelessWidget {
     );
   }
 
-  Widget _buildArchiveText(RadioEpg program, TextTheme textTheme) {
-    final dateStr = DateFormat('d. MMM').format(program.start);
+  Widget _buildArchiveText(BuildContext context, RadioEpg program, TextTheme textTheme) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final dateStr = DateFormat.MMMd(locale).format(program.start);
+    final archive = AppLocalizations.of(context)?.player_archive ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'Archiv · $dateStr',
+          '$archive · $dateStr',
           style: textTheme.bodySmall?.copyWith(
             color: textTheme.bodySmall?.color?.withOpacity(0.6),
           ),

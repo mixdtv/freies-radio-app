@@ -62,5 +62,6 @@
     "error_connection_refused":"Server unavailable. Please try again later.",
     "timeline_no_shows":"No shows available",
     "date_today": "Today",
-    "date_tomorrow": "Tomorrow"
+    "date_tomorrow": "Tomorrow",
+    "player_archive": "Archive"
 }
