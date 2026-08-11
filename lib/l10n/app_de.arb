@@ -64,5 +64,7 @@
     "date_today": "Heute",
     "date_tomorrow": "Morgen",
     "player_archive": "Archiv",
-    "timeline_jump_to_current": "Läuft gerade"
+    "timeline_jump_to_current": "Läuft gerade",
+    "timeline_no_current_show": "Gerade keine Sendung im Programm",
+    "timeline_next_show": "Als Nächstes"
 }

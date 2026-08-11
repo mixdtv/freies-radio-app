@@ -170,6 +170,11 @@ class _TimelineListItemState extends State<TimelineListItem> {
                                         ],
                                       ),
                                     ),
+                                    // Keep the trailing icons off the title,
+                                    // which otherwise wraps right against them.
+                                    if ((AppConfig.enableArchivePlayback && canPlayArchive) ||
+                                        isFutureShow)
+                                      const SizedBox(width: 8),
                                     if (AppConfig.enableArchivePlayback && canPlayArchive)
                                       Padding(
                                         padding: const EdgeInsets.all(8.0),
