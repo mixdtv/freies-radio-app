@@ -63,5 +63,6 @@
     "timeline_no_shows":"No shows available",
     "date_today": "Today",
     "date_tomorrow": "Tomorrow",
-    "player_archive": "Archive"
+    "player_archive": "Archive",
+    "timeline_jump_to_current": "Now playing"
 }

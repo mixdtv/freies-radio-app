@@ -30,7 +30,11 @@ class RadioTimeLinePage extends StatefulWidget {
 
 class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
   final ItemScrollController itemScrollController = ItemScrollController();
+  final ItemPositionsListener itemPositionsListener = ItemPositionsListener.create();
   bool isScrolled = false;
+
+  /// Fraction of the viewport kept free above a programme we scroll to.
+  static const double _listAlignment = 0.09;
   @override
   void initState() {
     super.initState();
@@ -57,12 +61,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     }
     var cubit = context.read<TimeLineCubit>();
     var state = cubit.state;
-    // Prefer scrollToId (from search) over activeEpg, fall back to next upcoming program
-    String targetId = state.scrollToId ?? state.activeEpg.id;
-    if (targetId.isEmpty && state.futureEpg.isNotEmpty) {
-      targetId = state.futureEpg.first.id;
-      _log.fine('No active program, falling back to next upcoming: $targetId');
-    }
+    String targetId = state.scrollToId ?? _currentTargetId(state);
     _log.fine('targetId: $targetId, activeEpg.id: ${state.activeEpg.id}, allEpg.length: ${state.allEpg.length}');
     if(targetId.isNotEmpty) {
       int index = state.allEpg.indexWhere((e) => e.id == targetId);
@@ -70,7 +69,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
       if(index >= 0) {
         isScrolled = true;
         try {
-          itemScrollController.jumpTo(index: index);
+          itemScrollController.jumpTo(index: index, alignment: _listAlignment);
           _log.fine('Scrolled to index: $index');
           if (state.scrollToId != null) cubit.clearScrollTarget();
         } catch (e) {
@@ -156,10 +155,13 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                 );
               }
 
-              return RefreshIndicator(
+              return Stack(
+                children: [
+                  RefreshIndicator(
                 onRefresh: () async => await context.read<TimeLineCubit>().loadFirstPage(),
                 child: ScrollablePositionedList.builder(
                     itemScrollController: itemScrollController,
+                    itemPositionsListener: itemPositionsListener,
                     itemBuilder: (context, index) {
                       var item = allEpg[index];
                       final showDateHeader = index == 0 ||
@@ -181,6 +183,37 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                     },
                     itemCount: allEpg.length
                 ),
+              ),
+                  ValueListenableBuilder<Iterable<ItemPosition>>(
+                    valueListenable: itemPositionsListener.itemPositions,
+                    builder: (context, positions, _) {
+                      final day = _topmostDay(positions, allEpg);
+                      final targetIndex = allEpg.indexWhere(
+                          (e) => e.id == _currentTargetId(
+                              context.read<TimeLineCubit>().state));
+                      final targetVisible = positions.any((p) =>
+                          p.index == targetIndex &&
+                          p.itemTrailingEdge > 0 &&
+                          p.itemLeadingEdge < 1);
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (day != null) _buildPinnedDateHeader(context, day),
+                          const Spacer(),
+                          if (targetIndex >= 0 && !targetVisible)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: _buildJumpToCurrentButton(context, allEpg),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               );
             },),
           )
@@ -230,6 +263,82 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  /// What "now" means for this timeline: the programme on air, or — for a
+  /// station that has nothing scheduled at the moment — the next one.
+  String _currentTargetId(TimeLineState state) {
+    if (state.activeEpg.id.isNotEmpty) return state.activeEpg.id;
+    if (state.futureEpg.isNotEmpty) return state.futureEpg.first.id;
+    return '';
+  }
+
+  /// Scroll back to that programme on demand, animated (the initial positioning
+  /// on page load jumps instead, so the list doesn't fly past days of content).
+  void _jumpToCurrent(List<RadioEpg> allEpg) {
+    final state = context.read<TimeLineCubit>().state;
+    final targetId = _currentTargetId(state);
+    final index = allEpg.indexWhere((e) => e.id == targetId);
+    if (index < 0 || !itemScrollController.isAttached) return;
+    itemScrollController.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      // Leave room for the pinned date header, so the programme isn't clipped
+      // underneath it (its ON AIR badge sits at the top edge of the card).
+      alignment: _listAlignment,
+    );
+  }
+
+  /// The day the topmost visible programme belongs to — drives the pinned
+  /// header, so the date stays readable instead of scrolling away with its
+  /// section.
+  DateTime? _topmostDay(Iterable<ItemPosition> positions, List<RadioEpg> allEpg) {
+    final visible = positions.where((p) => p.itemTrailingEdge > 0);
+    if (visible.isEmpty || allEpg.isEmpty) return null;
+    final top = visible.reduce((a, b) => a.itemLeadingEdge <= b.itemLeadingEdge ? a : b);
+    if (top.index < 0 || top.index >= allEpg.length) return null;
+    return allEpg[top.index].start;
+  }
+
+  /// Same label as the inline separator, but on an opaque bar pinned to the top
+  /// of the list so it survives scrolling.
+  Widget _buildPinnedDateHeader(BuildContext context, DateTime date) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.only(bottom: 4),
+      child: _buildDateHeader(context, date),
+    );
+  }
+
+  Widget _buildJumpToCurrentButton(BuildContext context, List<RadioEpg> allEpg) {
+    final textTheme = Theme.of(context).textTheme;
+    return Material(
+      color: AppColors.green,
+      borderRadius: BorderRadius.circular(24),
+      elevation: 4,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () => _jumpToCurrent(allEpg),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.my_location, size: 18, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                AppLocalizations.of(context)?.timeline_jump_to_current ?? '',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDateHeader(BuildContext context, DateTime date) {

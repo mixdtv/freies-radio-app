@@ -63,5 +63,6 @@
     "timeline_no_shows": "Keine Sendungen verfügbar",
     "date_today": "Heute",
     "date_tomorrow": "Morgen",
-    "player_archive": "Archiv"
+    "player_archive": "Archiv",
+    "timeline_jump_to_current": "Läuft gerade"
 }
