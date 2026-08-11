@@ -237,13 +237,17 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     final textTheme = Theme.of(context).textTheme;
     final now = DateTime.now();
 
+    final locale = Localizations.localeOf(context).toLanguageTag();
+
     String dateText;
     if (_isSameDay(date, now)) {
-      dateText = 'Heute';
+      dateText = AppLocalizations.of(context)?.date_today ?? '';
     } else if (_isSameDay(date, now.add(const Duration(days: 1)))) {
-      dateText = 'Morgen';
+      dateText = AppLocalizations.of(context)?.date_tomorrow ?? '';
     } else {
-      dateText = DateFormat('EEEE, d. MMMM', 'de_DE').format(date);
+      // Skeleton instead of a literal pattern: "Donnerstag, 13. August" in
+      // German, "Thursday, August 13" in English.
+      dateText = DateFormat.MMMMEEEEd(locale).format(date);
     }
 
     return Padding(

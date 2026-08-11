@@ -60,5 +60,7 @@
     "error_server_unavailable":"Server is temporarily unavailable. Please try again later.",
     "error_connection_default":"Unable to connect. Please check your internet connection and try again.",
     "error_connection_refused":"Server unavailable. Please try again later.",
-    "timeline_no_shows":"No shows available"
+    "timeline_no_shows":"No shows available",
+    "date_today": "Today",
+    "date_tomorrow": "Tomorrow"
 }

@@ -60,5 +60,7 @@
     "error_server_unavailable": "Server ist vorübergehend nicht verfügbar. Bitte versuche es später erneut.",
     "error_connection_default": "Verbindung nicht möglich. Bitte überprüfe deine Internetverbindung und versuche es erneut.",
     "error_connection_refused": "Server nicht erreichbar. Bitte versuche es später erneut.",
-    "timeline_no_shows": "Keine Sendungen verfügbar"
+    "timeline_no_shows": "Keine Sendungen verfügbar",
+    "date_today": "Heute",
+    "date_tomorrow": "Morgen"
 }
