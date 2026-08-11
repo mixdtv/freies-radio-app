@@ -74,6 +74,16 @@ CLAUDE.md
 private_keys/
 backup_*/
 .venv-play/
+
+# Credentials never belong in here, not even briefly: this repo is public.
+# The real files live one directory up (see docs/releasing.md).
+*.p8
+*.pem
+*.p12
+*.keystore
+*-serviceaccount.json
+*service-account*.json
+
 ios/fastlane/report.xml
 ios/fastlane/README.md
 ios/fastlane/test_output/
