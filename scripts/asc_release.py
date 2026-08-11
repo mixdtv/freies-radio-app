@@ -174,6 +174,20 @@ def main() -> int:
         current_type = version["attributes"].get("releaseType")
         print(f"version {train}: exists, state {state}, releaseType {current_type}")
         if state not in EDITABLE:
+            # Everything else is off limits once Apple has the version, but the
+            # release option can still be switched while it is in review — which
+            # is exactly when you realise you want the other one.
+            if current_type != a.release_type:
+                if a.dry_run:
+                    print(f"\n[dry-run] would change releaseType "
+                          f"{current_type} -> {a.release_type}")
+                    return 0
+                call(token, "PATCH", f"/v1/appStoreVersions/{version['id']}", {
+                    "data": {"type": "appStoreVersions", "id": version["id"],
+                             "attributes": {"releaseType": a.release_type}},
+                })
+                print(f"releaseType {current_type} -> {a.release_type}")
+                return 0
             raise ApiError(f"version {train} is in state {state} — not editable here")
     else:
         current_type = None
