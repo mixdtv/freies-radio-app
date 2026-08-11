@@ -24,7 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "de.radiozeit.freiesradio"
-    compileSdkVersion 35
+    compileSdkVersion 36
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -43,7 +43,7 @@ android {
     defaultConfig {
         applicationId "de.radiozeit.freiesradio"
         minSdkVersion flutter.minSdkVersion
-        targetSdkVersion 35
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         archivesBaseName = "freiesradio-v$versionCode($versionName)"
