@@ -174,6 +174,8 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
               bool isLoading = context.select((TimeLineCubit cubit) => cubit.state.isLoading,);
               List<RadioEpg> allEpg = context.select((TimeLineCubit cubit) => cubit.state.allEpg,);
               String stationName = context.select((TimeLineCubit cubit) => cubit.state.activeRadio?.name ?? '',);
+              String? playingId = context.select(
+                  (PlayerCubit cubit) => cubit.state.currentArchiveProgram?.id);
 
               if (allEpg.isEmpty) {
                 if (isLoading) {
@@ -231,6 +233,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
                                 }
                                 return TimelineListItem(
                                   isActive: activeEpg?.id == row.programme!.id,
+                                  isPlaying: playingId == row.programme!.id,
                                   program: row.programme!,
                                   stationName: stationName,
                                   onPlay: () => _playProgram(row.programme!),
@@ -315,9 +318,14 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  /// What "now" means for this timeline: the programme on air, or — for a
-  /// station that has nothing scheduled at the moment — the next one.
+  /// What "now" means for this timeline, most specific first: the archived
+  /// programme the player is on (only if it belongs to this station's list),
+  /// otherwise what is on air, otherwise the next programme.
   String _currentTargetId(TimeLineState state) {
+    final playing = context.read<PlayerCubit>().state.currentArchiveProgram;
+    if (playing != null && state.allEpg.any((e) => e.id == playing.id)) {
+      return playing.id;
+    }
     if (state.activeEpg.id.isNotEmpty) return state.activeEpg.id;
     if (state.futureEpg.isNotEmpty) return state.futureEpg.first.id;
     return '';
@@ -440,6 +448,15 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
     );
   }
 
+  /// Whether the button points at something that is actually running — either
+  /// the archived programme in the player or the one on air.
+  bool _hasSomethingRunning(BuildContext context) {
+    final state = context.read<TimeLineCubit>().state;
+    final playing = context.read<PlayerCubit>().state.currentArchiveProgram;
+    if (playing != null && state.allEpg.any((e) => e.id == playing.id)) return true;
+    return state.activeEpg.id.isNotEmpty;
+  }
+
   Widget _buildJumpToCurrentButton(BuildContext context, List<_Row> rows) {
     final textTheme = Theme.of(context).textTheme;
     return Material(
@@ -457,7 +474,7 @@ class _RadioTimeLinePageState extends State<RadioTimeLinePage> {
               const Icon(Icons.my_location, size: 18, color: Colors.white),
               const SizedBox(width: 8),
               Text(
-                context.read<TimeLineCubit>().state.activeEpg.id.isNotEmpty
+                _hasSomethingRunning(context)
                     ? AppLocalizations.of(context)?.timeline_jump_to_current ?? ''
                     : AppLocalizations.of(context)?.timeline_next_show ?? '',
                 style: textTheme.bodyMedium?.copyWith(

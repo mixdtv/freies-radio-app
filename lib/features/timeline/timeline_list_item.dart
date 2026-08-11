@@ -14,7 +14,11 @@ import 'package:radiozeit/utils/extensions.dart';
 
 class TimelineListItem extends StatefulWidget {
   final RadioEpg program;
+  /// On air per the schedule.
   final bool isActive;
+  /// What the player is playing right now — not the same thing: an archived
+  /// programme plays while a different one is on air.
+  final bool isPlaying;
   final String stationName;
   final Function() onPlay;
   final Function()? onLive;
@@ -26,6 +30,7 @@ class TimelineListItem extends StatefulWidget {
     required this.stationName,
     this.onLive,
     required this.isActive,
+    this.isPlaying = false,
   });
 
   @override
@@ -215,22 +220,29 @@ class _TimelineListItemState extends State<TimelineListItem> {
             ],
           ),
         ),
-        if(widget.isActive)
+        if(widget.isActive || widget.isPlaying)
           Positioned(
             right: 32,
             top: 20,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 7,vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.green,
+                // Playing wins the badge: it is the more specific statement
+                // about what you are hearing.
+                color: widget.isPlaying ? AppColors.orange : AppColors.green,
                 borderRadius: BorderRadius.circular(20)
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SvgPicture.asset("assets/icons/ic_on_air.svg"),
+                  widget.isPlaying
+                      ? const Icon(Icons.volume_up, size: 14, color: Colors.white)
+                      : SvgPicture.asset("assets/icons/ic_on_air.svg"),
                   const SizedBox(width: 8,),
-                  const Text("ON AIR",style: TextStyle(
+                  Text(widget.isPlaying
+                          ? AppLocalizations.of(context)?.timeline_playing ?? ''
+                          : "ON AIR",
+                      style: const TextStyle(
                     fontSize: 11,
                     height: 16/11,
                     color: Colors.white,
