@@ -17,6 +17,11 @@ class RadioListItem extends StatelessWidget {
 
 
 
+  /// Genres as one line, ignoring blank entries so a list of empty strings
+  /// counts as no genres rather than rendering ", ".
+  String get genreLine =>
+      radio.tags.where((tag) => tag.trim().isNotEmpty).join(", ");
+
   @override
   Widget build(BuildContext context) {
     TextTheme textTheme = Theme.of(context).textTheme;
@@ -56,7 +61,11 @@ class RadioListItem extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(radio.name,style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w700)),
-                  Text(radio.tags.join(", "),style: textTheme.bodySmall,),
+                  // Omitted entirely when a station has no genres: an empty
+                  // Text still claims a line, which would leave a gap between
+                  // the name and the member logos.
+                  if (genreLine.isNotEmpty)
+                    Text(genreLine,style: textTheme.bodySmall,),
                   MemberStrip(members: radio.members),
                 ],
               ),
