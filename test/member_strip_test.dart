@@ -98,25 +98,54 @@ void main() {
       expect(find.text('Radio PAX'), findsOneWidget);
     });
 
+    testWidgets('a chip is only as wide as it needs to be', (tester) async {
+      // Regression: a chip that fills the width it is offered pushes every
+      // other member onto its own line, so the strip becomes a vertical stack.
+      await tester.pumpWidget(wrap(MemberStrip(members: [member(name: 'A')])));
+
+      final chip = tester.getSize(
+        find.ancestor(of: find.text('A'), matching: find.byType(Container)).first,
+      );
+
+      expect(chip.width, lessThan(120));
+    });
+
+    testWidgets('several short members share one line', (tester) async {
+      await tester.pumpWidget(wrap(MemberStrip(members: [member(name: 'A')])));
+      final oneMember = tester.getSize(find.byType(MemberStrip)).height;
+
+      await tester.pumpWidget(wrap(MemberStrip(
+        members: [member(name: 'A'), member(name: 'B'), member(name: 'C')],
+      )));
+
+      expect(tester.getSize(find.byType(MemberStrip)).height, oneMember);
+    });
+
     testWidgets('wraps rather than overflowing when six members do not fit',
         (tester) async {
-      // Six chips exceed the ~248 px a list row leaves on a 390 pt phone, so
+      // Six chips exceed the 232 px a list row leaves on a 390 pt phone, so
       // the strip must run onto a second line instead of clipping.
+      await tester.pumpWidget(wrap(MemberStrip(members: [member(name: 'A')])));
+      final oneLine = tester.getSize(find.byType(MemberStrip)).height;
+
       await tester.pumpWidget(wrap(MemberStrip(
         members: List.generate(6, (i) => member(name: 'Mitglied $i')),
       )));
 
       expect(tester.takeException(), isNull);
-      final strip = tester.getSize(find.byType(MemberStrip));
-      expect(strip.height, greaterThan(MemberStrip.logoHeight + 12));
+      expect(
+        tester.getSize(find.byType(MemberStrip)).height,
+        greaterThan(oneLine),
+      );
     });
 
-    testWidgets('a single row stays one line tall', (tester) async {
+    testWidgets('one member is no taller than a single logo plus padding',
+        (tester) async {
       await tester.pumpWidget(wrap(MemberStrip(members: [member(name: 'A')])));
 
       expect(
         tester.getSize(find.byType(MemberStrip)).height,
-        MemberStrip.logoHeight + 12 + 5,
+        lessThanOrEqualTo(MemberStrip.logoHeight + 12 + 5),
       );
     });
   });

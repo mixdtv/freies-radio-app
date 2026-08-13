@@ -46,21 +46,35 @@ class MemberStrip extends StatelessWidget {
   Widget _chip(RadioMember member) {
     if (member.logo.isEmpty) return _NameChip(member: member);
 
+    // Sized by padding around the logo rather than by an explicit height with
+    // a Center inside: Center — like any Container alignment — expands to the
+    // width it is offered, which would make every chip as wide as the row and
+    // turn the strip into a vertical stack. Padding shrink-wraps instead, so
+    // the chip is exactly as wide as the logo's aspect ratio makes it.
     return Container(
-      height: logoHeight + _chipPadding * 2,
-      padding: const EdgeInsets.symmetric(horizontal: _chipPadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _chipPadding,
+        vertical: _chipPadding,
+      ),
       decoration: BoxDecoration(
         color: CustomColor.parseCss(member.logoBgColor) ?? Colors.white,
         borderRadius: BorderRadius.circular(_radius),
       ),
-      child: Center(
-        child: CachedNetworkImage(
-          imageUrl: member.logo,
+      child: CachedNetworkImage(
+        imageUrl: member.logo,
+        // A plain Image given only a height sizes to the intrinsic ratio;
+        // CachedNetworkImage on its own fills the offered width instead.
+        imageBuilder: (context, provider) => Image(
+          image: provider,
           height: logoHeight,
           fit: BoxFit.contain,
-          // A member is worth naming even when its logo will not load.
-          errorWidget: (context, url, error) => _NameLabel(member: member),
-          placeholder: (context, url) => const SizedBox(height: logoHeight),
+        ),
+        // A member is worth naming even when its logo will not load.
+        errorWidget: (context, url, error) => _NameLabel(member: member),
+        // Square while loading, so the strip does not reflow as logos arrive.
+        placeholder: (context, url) => const SizedBox(
+          height: logoHeight,
+          width: logoHeight,
         ),
       ),
     );
@@ -77,15 +91,18 @@ class _NameChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MemberStrip.logoHeight + MemberStrip._chipPadding * 2,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: MemberStrip._chipPadding,
+      ),
+      constraints: const BoxConstraints(minHeight: MemberStrip.logoHeight),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(MemberStrip._radius),
         border: Border.all(
           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.25),
         ),
       ),
-      child: Center(child: _NameLabel(member: member)),
+      child: _NameLabel(member: member),
     );
   }
 }
