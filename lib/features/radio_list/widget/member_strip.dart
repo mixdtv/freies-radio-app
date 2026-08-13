@@ -3,51 +3,87 @@ import 'package:flutter/material.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
+/// Every decision about how a member logo is seated, in one place.
+///
+/// This look is provisional and expected to change once the stations have seen
+/// it, so the knobs live here rather than scattered through the widget below:
+/// changing or reverting the presentation should be an edit to these constants
+/// and nothing else. The alternatives were measured against the real logos, so
+/// the notes below say what each dial actually costs.
+///
+/// The strip has 232 logical pixels on a 390 pt phone — 390 less the row's
+/// 16/6 padding, the 64 pt station logo, both 16 pt gaps and the 40 pt
+/// favourite button. Everything below is a trade against that budget.
+class MemberLogoStyle {
+  /// Logo height. The logos are wordmarks ranging from 1:1 to about 3:1, so
+  /// they are laid out at a fixed height with the width left free — fitting
+  /// them into squares either crops them to nonsense or shrinks them past
+  /// legibility (14 is unusable, 18 is the floor).
+  ///
+  /// 26 is the largest size that costs no extra line: at 28 a nine-member
+  /// strip wraps to three lines, and at 30 even a five-member one wraps to two.
+  static const double height = 26;
+
+  /// Space between the logo and the edge of its plate.
+  ///
+  /// Zero means the plate ends exactly where the artwork does, which is what
+  /// keeps a full-bleed tile (colaboradio's black square, Radio Słubfurt's red
+  /// mosaic) from showing a rim of not-quite-matching colour — a mosaic has no
+  /// single edge colour to match in the first place.
+  ///
+  /// Raising this to 5–6 gives the "logo on a card" look. It costs more than it
+  /// sounds: every chip grows by twice this in both directions, which took a
+  /// nine-member strip from 57 px to 112 px and a five-member one from 26 px to
+  /// 73 px. Pair it with [plate] so the rim is at least uniform.
+  static const double padding = 0;
+
+  /// One background for every member, or null to use each station's own
+  /// `logoBgColor`.
+  ///
+  /// Only three logos need a plate at all — Studio Ansage, Radio Woltersdorf
+  /// and Pi Radio, whose ring is cut out of its tile rather than painted white.
+  /// The rest carry their own opaque background, so any plate is invisible
+  /// behind them. Setting a uniform colour is therefore about calm in the
+  /// strip, not legibility; `Color(0xFFE9E9E9)` was the muted grey we tried.
+  ///
+  /// It has to be opaque. A translucent plate resolves to whatever sits behind
+  /// it, which on the dark theme's `#0E0E0F` is dark grey — the opposite of
+  /// what a plate is for. Below about 85% opacity, dark lettering stops being
+  /// readable on the dark theme.
+  static const Color? plate = null;
+
+  static const double radius = 3;
+
+  /// Between chips on a line, and between lines.
+  static const double gap = 6;
+  static const double runGap = 5;
+
+  /// Between the row's text and the first line of logos.
+  static const double topGap = 5;
+}
+
 /// Logos of the stations that share an aggregated station's programme, shown
 /// under the genre line in the station list.
 ///
-/// The logos are wordmarks with aspect ratios from 1:1 to about 3:1, so they
-/// are laid out at a fixed height with the width left free — squeezing them
-/// into squares either crops them to nonsense or shrinks them to illegibility.
-///
-/// A list row leaves 232 logical pixels for this column on a 390 pt phone
-/// (390 less the 16/6 padding, the 64 pt logo, both 16 pt gaps and the 40 pt
-/// favourite button). At [logoHeight] four logos fill about 224 of it, so four
-/// is all that fits on one line — hence [Wrap] rather than a [Row]: a fifth
-/// member starts a second line instead of being clipped away.
-///
-/// Each logo sits on its own `logoBgColor`. Without that backing the members
-/// whose artwork is an opaque black tile lose their edges on the dark theme's
-/// ground, and one of them all but disappears.
-///
-/// That backing is sized to the artwork exactly, with no padding, because the
-/// two kinds of logo in the wild need opposite things from it. Artwork that is
-/// a full-bleed tile (colaboradio's black square, Radio Słubfurt's red mosaic)
-/// covers the plate completely, so no rim of a not-quite-matching colour can
-/// show — a mosaic has no single edge colour to match in the first place. A
-/// mark on transparency (frrapó, Studio Ansage, and Pi Radio, whose ring is
-/// cut out of the tile rather than painted white) gets the plate directly
-/// behind its ink, which is what makes it readable on the dark theme. Padding
-/// would serve the second kind and betray the first.
+/// A [Wrap] rather than a [Row]: a member that does not fit starts a new line
+/// instead of being clipped away. See [MemberLogoStyle] for the sizing.
 class MemberStrip extends StatelessWidget {
-  static const double logoHeight = 22;
-  static const double _chipPadding = 6;
-  static const double _spacing = 6;
-  static const double _radius = 3;
-
   final List<RadioMember> members;
 
   const MemberStrip({super.key, required this.members});
+
+  /// Kept for callers and tests that reason about the strip's footprint.
+  static double get logoHeight => MemberLogoStyle.height;
 
   @override
   Widget build(BuildContext context) {
     if (members.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(top: 5),
+      padding: const EdgeInsets.only(top: MemberLogoStyle.topGap),
       child: Wrap(
-        spacing: _spacing,
-        runSpacing: 5,
+        spacing: MemberLogoStyle.gap,
+        runSpacing: MemberLogoStyle.runGap,
         children: members.map(_chip).toList(),
       ),
     );
@@ -57,32 +93,37 @@ class MemberStrip extends StatelessWidget {
     if (member.logo.isEmpty) return _NameChip(member: member);
 
     // ClipRRect and ColoredBox both take their size from the child, so the
-    // plate ends exactly where the artwork does. Note neither may be swapped
-    // for a Container with an alignment or a Center: those expand to the width
-    // they are offered, which makes every chip as wide as the row and turns
-    // the strip into a vertical stack.
+    // plate ends where the artwork does. Neither may be swapped for a Container
+    // with an alignment, or a Center: those expand to the width they are
+    // offered, which makes every chip as wide as the row and turns the strip
+    // into a vertical stack.
     return ClipRRect(
-      borderRadius: BorderRadius.circular(_radius),
+      borderRadius: BorderRadius.circular(MemberLogoStyle.radius),
       child: ColoredBox(
-        color: CustomColor.parseCss(member.logoBgColor) ?? Colors.white,
-        child: CachedNetworkImage(
-          imageUrl: member.logo,
-          // A plain Image given only a height sizes to the intrinsic ratio;
-          // CachedNetworkImage on its own fills the offered width instead.
-          imageBuilder: (context, provider) => Image(
-            image: provider,
-            height: logoHeight,
-            fit: BoxFit.contain,
-          ),
-          // A member is worth naming even when its logo will not load.
-          errorWidget: (context, url, error) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _chipPadding),
-            child: _NameLabel(member: member),
-          ),
-          // Square while loading, so the strip does not reflow as logos arrive.
-          placeholder: (context, url) => const SizedBox(
-            height: logoHeight,
-            width: logoHeight,
+        color: MemberLogoStyle.plate ??
+            CustomColor.parseCss(member.logoBgColor) ??
+            Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(MemberLogoStyle.padding),
+          child: CachedNetworkImage(
+            imageUrl: member.logo,
+            // A plain Image given only a height sizes to the intrinsic ratio;
+            // CachedNetworkImage on its own fills the offered width instead.
+            imageBuilder: (context, provider) => Image(
+              image: provider,
+              height: MemberLogoStyle.height,
+              fit: BoxFit.contain,
+            ),
+            // A member is worth naming even when its logo will not load.
+            errorWidget: (context, url, error) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: _NameLabel(member: member),
+            ),
+            // Square while loading, so the strip does not reflow as logos land.
+            placeholder: (context, url) => const SizedBox(
+              height: MemberLogoStyle.height,
+              width: MemberLogoStyle.height,
+            ),
           ),
         ),
       ),
@@ -100,13 +141,10 @@ class _NameChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: MemberStrip._chipPadding,
-      ),
-      constraints: const BoxConstraints(minHeight: MemberStrip.logoHeight),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      constraints: const BoxConstraints(minHeight: MemberLogoStyle.height),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(MemberStrip._radius),
+        borderRadius: BorderRadius.circular(MemberLogoStyle.radius),
         border: Border.all(
           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.25),
         ),
