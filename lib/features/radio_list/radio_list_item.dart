@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:radiozeit/data/model/radio.dart';
+import 'package:radiozeit/features/radio_list/widget/member_strip.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
 class RadioListItem extends StatelessWidget {
@@ -56,6 +57,7 @@ class RadioListItem extends StatelessWidget {
                 children: [
                   Text(radio.name,style: textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w700)),
                   Text(radio.tags.join(", "),style: textTheme.bodySmall,),
+                  MemberStrip(members: radio.members),
                 ],
               ),
             ),

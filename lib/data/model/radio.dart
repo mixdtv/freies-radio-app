@@ -21,6 +21,10 @@ class AppRadio {
   List<SongInfo> topSongs;
   List<String>? podcasts;
   bool archiveDisabled;
+  /// Stations sharing this station's programme, empty for a station that
+  /// broadcasts on its own. Resolved server-side, so a member always arrives
+  /// with a name and, where one exists, a logo.
+  List<RadioMember> members;
 
   AppRadio({
     required this.id,
@@ -39,6 +43,7 @@ class AppRadio {
     required this.iconColor,
     this.podcasts,
     this.archiveDisabled = false,
+    this.members = const [],
   });
 
   factory AppRadio.fromJson(Map<String,dynamic> json) {
@@ -64,6 +69,38 @@ class AppRadio {
         topSongs: const [],
         podcasts: podcasts,
         archiveDisabled: json["archiveDisabled"] == true,
+        members: JsonMap.toList(json["members"])
+            .map((e) => RadioMember.fromJson(JsonMap.toMap(e)))
+            .where((m) => m.name.isNotEmpty)
+            .toList(),
+    );
+  }
+}
+
+/// One station in an aggregated station's member list.
+///
+/// [prefix] is empty for a guest that has no station of its own, and [logo] is
+/// empty for a member with no logo — the strip falls back to the name in both
+/// cases, so neither is a reason to drop the member.
+class RadioMember {
+  final String prefix;
+  final String name;
+  final String logo;
+  final String logoBgColor;
+
+  const RadioMember({
+    required this.prefix,
+    required this.name,
+    required this.logo,
+    required this.logoBgColor,
+  });
+
+  factory RadioMember.fromJson(Map<String, dynamic> json) {
+    return RadioMember(
+      prefix: JsonMap.toStr(json["prefix"]) ?? "",
+      name: JsonMap.toStr(json["name"]) ?? "",
+      logo: JsonMap.toStr(json["imgUrl"]) ?? "",
+      logoBgColor: JsonMap.toStr(json["logoBgColor"]) ?? "",
     );
   }
 }
