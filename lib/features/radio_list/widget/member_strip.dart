@@ -19,6 +19,16 @@ import 'package:radiozeit/utils/extensions.dart';
 /// Each logo sits on its own `logoBgColor`. Without that backing the members
 /// whose artwork is an opaque black tile lose their edges on the dark theme's
 /// ground, and one of them all but disappears.
+///
+/// That backing is sized to the artwork exactly, with no padding, because the
+/// two kinds of logo in the wild need opposite things from it. Artwork that is
+/// a full-bleed tile (colaboradio's black square, Radio Słubfurt's red mosaic)
+/// covers the plate completely, so no rim of a not-quite-matching colour can
+/// show — a mosaic has no single edge colour to match in the first place. A
+/// mark on transparency (frrapó, Studio Ansage, and Pi Radio, whose ring is
+/// cut out of the tile rather than painted white) gets the plate directly
+/// behind its ink, which is what makes it readable on the dark theme. Padding
+/// would serve the second kind and betray the first.
 class MemberStrip extends StatelessWidget {
   static const double logoHeight = 22;
   static const double _chipPadding = 6;
@@ -46,35 +56,34 @@ class MemberStrip extends StatelessWidget {
   Widget _chip(RadioMember member) {
     if (member.logo.isEmpty) return _NameChip(member: member);
 
-    // Sized by padding around the logo rather than by an explicit height with
-    // a Center inside: Center — like any Container alignment — expands to the
-    // width it is offered, which would make every chip as wide as the row and
-    // turn the strip into a vertical stack. Padding shrink-wraps instead, so
-    // the chip is exactly as wide as the logo's aspect ratio makes it.
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: _chipPadding,
-        vertical: _chipPadding,
-      ),
-      decoration: BoxDecoration(
+    // ClipRRect and ColoredBox both take their size from the child, so the
+    // plate ends exactly where the artwork does. Note neither may be swapped
+    // for a Container with an alignment or a Center: those expand to the width
+    // they are offered, which makes every chip as wide as the row and turns
+    // the strip into a vertical stack.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(_radius),
+      child: ColoredBox(
         color: CustomColor.parseCss(member.logoBgColor) ?? Colors.white,
-        borderRadius: BorderRadius.circular(_radius),
-      ),
-      child: CachedNetworkImage(
-        imageUrl: member.logo,
-        // A plain Image given only a height sizes to the intrinsic ratio;
-        // CachedNetworkImage on its own fills the offered width instead.
-        imageBuilder: (context, provider) => Image(
-          image: provider,
-          height: logoHeight,
-          fit: BoxFit.contain,
-        ),
-        // A member is worth naming even when its logo will not load.
-        errorWidget: (context, url, error) => _NameLabel(member: member),
-        // Square while loading, so the strip does not reflow as logos arrive.
-        placeholder: (context, url) => const SizedBox(
-          height: logoHeight,
-          width: logoHeight,
+        child: CachedNetworkImage(
+          imageUrl: member.logo,
+          // A plain Image given only a height sizes to the intrinsic ratio;
+          // CachedNetworkImage on its own fills the offered width instead.
+          imageBuilder: (context, provider) => Image(
+            image: provider,
+            height: logoHeight,
+            fit: BoxFit.contain,
+          ),
+          // A member is worth naming even when its logo will not load.
+          errorWidget: (context, url, error) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: _chipPadding),
+            child: _NameLabel(member: member),
+          ),
+          // Square while loading, so the strip does not reflow as logos arrive.
+          placeholder: (context, url) => const SizedBox(
+            height: logoHeight,
+            width: logoHeight,
+          ),
         ),
       ),
     );
