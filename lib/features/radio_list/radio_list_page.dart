@@ -183,8 +183,6 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
               final sortedList = [...favorites, ...others];
 
               if(ScreenType.getFormFactor(context) == ScreenType.big) {
-                // The big card variant shows no member logos, so who is
-                // currently on air has nowhere to go there.
                 return RadioListBig(
                   list: sortedList,
                   error: cubit.state.loadingError,
@@ -203,7 +201,6 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
                 favorites: favoriteList,
                 setFavorite: _setFavorite,
                 openRadio: _openRadio,
-                nowPlaying: cubit.state.nowPlaying,
               );
             },)),
           ],
