@@ -3,8 +3,10 @@ import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:radiozeit/data/model/now_playing.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/features/radio_list/widget/member_strip.dart';
+import 'package:radiozeit/features/radio_list/widget/now_playing_line.dart';
 import 'package:radiozeit/utils/extensions.dart';
 
 class RadioListItem extends StatelessWidget {
@@ -13,7 +15,14 @@ class RadioListItem extends StatelessWidget {
   final Function() toggleFavorite;
   final Function() openRadio;
 
-  const RadioListItem({super.key, required this.radio, required this.isFavorite, required this.toggleFavorite, required this.openRadio});
+  /// Who currently has this station's stream, once the EPG has said. Null
+  /// while that request is still out, or if it never answers.
+  final NowPlaying? nowPlaying;
+
+  /// The member [nowPlaying] belongs to, for its logo and proper name.
+  final RadioMember? nowPlayingStudio;
+
+  const RadioListItem({super.key, required this.radio, required this.isFavorite, required this.toggleFavorite, required this.openRadio, this.nowPlaying, this.nowPlayingStudio});
 
 
 
@@ -66,7 +75,16 @@ class RadioListItem extends StatelessWidget {
                   // the name and the member logos.
                   if (genreLine.isNotEmpty)
                     Text(genreLine,style: textTheme.bodySmall,),
-                  MemberStrip(members: radio.members),
+                  // Once the EPG has answered, which studio is on the stream
+                  // says more than which studios exist — so it takes the
+                  // strip's place rather than adding a line.
+                  if (nowPlaying != null)
+                    NowPlayingLine(
+                      nowPlaying: nowPlaying!,
+                      studio: nowPlayingStudio,
+                    )
+                  else
+                    MemberStrip(members: radio.members),
                 ],
               ),
             ),
