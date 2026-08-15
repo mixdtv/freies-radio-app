@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:radiozeit/config/app_config.dart';
 import 'package:radiozeit/data/model/song_info.dart';
 import 'package:radiozeit/utils/json_map.dart';
@@ -45,6 +47,25 @@ class AppRadio {
     this.archiveDisabled = false,
     this.members = const [],
   });
+
+  /// Parse a whole station list from the JSON held in the on-device cache.
+  ///
+  /// Anything unusable yields an empty list — a payload written by an older
+  /// build, or a half-written string — because a broken cache has to degrade
+  /// to "no cache" rather than take the app down on launch.
+  static List<AppRadio> listFromJsonString(String? cached) {
+    if (cached == null || cached.isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(cached);
+      if (decoded is! List) return const [];
+      return decoded
+          .map((e) => AppRadio.fromJson(JsonMap.toMap(e)))
+          .where((r) => r.prefix.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 
   factory AppRadio.fromJson(Map<String,dynamic> json) {
     List<String>? podcasts;

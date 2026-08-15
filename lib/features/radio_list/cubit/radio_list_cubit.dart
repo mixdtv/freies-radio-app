@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bloc/bloc.dart';
 import 'package:bloc_presentation/bloc_presentation.dart';
 import 'package:dio/dio.dart';
@@ -147,10 +149,23 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
     startLoadRadio();
   }
 
+  /// Put the last known list on screen before the request goes out.
+  ///
+  /// Only when nothing is displayed yet, so a refresh never replaces fresh
+  /// data with older data mid-scroll.
+  _showCachedRadioList() {
+    if(state.radioList.isNotEmpty) return;
+    var cached = AppRadio.listFromJsonString(settings.cachedRadioList);
+    if(cached.isEmpty) return;
+    emit(state.copyWith(radioList: cached, isListEmpty: false));
+  }
+
   _loadRadioList(Location? location) async {
+    _showCachedRadioList();
     cancelLoadRadio = CancelToken();
     var resp = await repo.loadRadioList(location:location,cancel:cancelLoadRadio);
     if(resp.success) {
+      settings.cachedRadioList = jsonEncode(resp.raw);
       emitPresentation(RadioListLoadedEvent(resp.radioList));
       emit(state.copyWith(
           isLoading: false,
@@ -159,9 +174,12 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
       ));
     } else {
       if(!resp.isCanceled) {
+        // With a cached list already on screen an error banner would sit over
+        // working content; the next successful start replaces it quietly. The
+        // cache itself is left alone either way — only success overwrites it.
         emit(state.copyWith(
             isLoading: false,
-            loadingError: resp.message
+            loadingError: state.radioList.isEmpty ? resp.message : ""
         ));
       }
     }

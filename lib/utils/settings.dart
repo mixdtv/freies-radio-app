@@ -42,6 +42,19 @@ class AppSettings {
         .toList();
   }
 
+  /// The last station list the API returned, so a cold start has something to
+  /// show before the network answers — and something to show at all when it
+  /// does not. Favourites are stored as ids alone, so without this an offline
+  /// launch cannot even render the user's own favourites.
+  ///
+  /// Only ever replaced by a successful response: a failed refresh has to
+  /// leave the previous list in place.
+  String get cachedRadioList => _prefs.getString("radio_list_cache") ?? "";
+
+  set cachedRadioList(String payload) {
+    _prefs.setString("radio_list_cache", payload);
+  }
+
   setLastRadio(String id) async {
     await _prefs.setString("last_radio", id);
   }
