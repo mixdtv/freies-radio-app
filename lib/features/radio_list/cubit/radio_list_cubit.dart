@@ -50,6 +50,12 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
 
     emit(state.copyWith(isLoading: isLoading,loadingError: "",city: const City.empty()));
 
+    // Before anything that can wait. Inside _loadRadioList this was reached
+    // only once a request was being issued, so a start with no stored position
+    // — after location was switched off and on again — still sat behind the
+    // position fix, which is the wait this exists to remove.
+    _showCachedRadioList();
+
     if(!settings.isUserEnableLocation) {
       LocationCity? selectedCity = settings.manualCity;
       Location? location;
@@ -180,7 +186,6 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
   }
 
   _loadRadioList(Location? location) async {
-    _showCachedRadioList();
     // Cancel any request still in flight: a fresh position can start a second
     // one, and the older answer must not land on top of the newer.
     cancelLoadRadio?.cancel();
