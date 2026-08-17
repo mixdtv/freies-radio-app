@@ -56,7 +56,20 @@ class RadioSearchPage extends StatelessWidget {
               bool isProgramNotFound = context.select((RadioListSearchCubit cubit) => cubit.state.isProgramNotFound);
               List<RadioEpg> programList = context.select((RadioListSearchCubit cubit) => cubit.state.programs);
 
-              if(!isCityLoading && !isRadioLoading && !isProgramLoading && isCityNotFound && isRadioNotFound && isProgramNotFound) {
+              // Only programmes of stations in the broadcaster list are shown:
+              // a station hidden in the backend (showInApp: false) must not
+              // surface through EPG search, and every row that is shown is
+              // guaranteed to open (same match as _openProgram).
+              List<AppRadio> knownStations = context.select((RadioListCubit cubit) => cubit.state.radioList);
+              List<RadioEpg> visiblePrograms = programList
+                  .where((p) => _stationFor(knownStations, p) != null)
+                  .toList();
+              // Filtered-empty only counts as "not found" when the EPG had
+              // results; an empty query must stay a blank section.
+              bool programNotFound = isProgramNotFound ||
+                  (!isProgramLoading && programList.isNotEmpty && visiblePrograms.isEmpty);
+
+              if(!isCityLoading && !isRadioLoading && !isProgramLoading && isCityNotFound && isRadioNotFound && programNotFound) {
                 return Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -94,7 +107,7 @@ class RadioSearchPage extends StatelessWidget {
               }
               // Programs section (before stations for better visibility)
               childs.add(_groupTitle(context, AppLocalizations.of(context)!.timeline));
-              if(!isProgramLoading && isProgramNotFound) {
+              if(!isProgramLoading && programNotFound) {
                 childs.add(
                     Center(
                       child: Opacity(
@@ -106,7 +119,7 @@ class RadioSearchPage extends StatelessWidget {
                     )
                 );
               } else {
-                childs.add(_programList(context, programList, isProgramLoading));
+                childs.add(_programList(context, visiblePrograms, isProgramLoading));
               }
 
               childs.add(_groupTitle(context, AppLocalizations.of(context)!.stations));
@@ -209,14 +222,21 @@ class RadioSearchPage extends StatelessWidget {
     );
   }
 
+  /// The station a programme belongs to, matched on the EPG slug or the
+  /// station prefix (case-insensitive), or null when it is not in the list.
+  static AppRadio? _stationFor(List<AppRadio> stations, RadioEpg program) {
+    final id = program.broadcasterId.toLowerCase();
+    for (final radio in stations) {
+      if (radio.epgPrefix.toLowerCase() == id || radio.prefix.toLowerCase() == id) {
+        return radio;
+      }
+    }
+    return null;
+  }
+
   _openProgram(BuildContext context, RadioEpg program) {
     // Find the matching station from the loaded radio list
-    final radioListCubit = context.read<RadioListCubit>();
-    final radio = radioListCubit.state.radioList.cast<AppRadio?>().firstWhere(
-      (r) => r!.epgPrefix.toLowerCase() == program.broadcasterId.toLowerCase()
-           || r.prefix.toLowerCase() == program.broadcasterId.toLowerCase(),
-      orElse: () => null,
-    );
+    final radio = _stationFor(context.read<RadioListCubit>().state.radioList, program);
 
     if (radio == null) return;
 
