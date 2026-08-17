@@ -36,6 +36,7 @@
     "app_name":"Freies Radio",
     "page_radio_list_location_city_title":"Stations around",
     "page_radio_list_not_found_in_location":"No stations found near you",
+    "page_radio_list_now_playing":"NOW",
     "city":"City",
     "stations":"Stations",
     "stations_not_found":"No stations found",

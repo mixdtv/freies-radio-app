@@ -109,11 +109,17 @@ class RadioMember {
   final String logo;
   final String logoBgColor;
 
+  /// The slug the EPG names this member by, resolved server-side from the
+  /// member's own station. Empty for a member with no EPG of its own, and for
+  /// a backend deployed before this field existed.
+  final String epgPrefix;
+
   const RadioMember({
     required this.prefix,
     required this.name,
     required this.logo,
     required this.logoBgColor,
+    this.epgPrefix = "",
   });
 
   factory RadioMember.fromJson(Map<String, dynamic> json) {
@@ -122,6 +128,7 @@ class RadioMember {
       name: JsonMap.toStr(json["name"]) ?? "",
       logo: JsonMap.toStr(json["imgUrl"]) ?? "",
       logoBgColor: JsonMap.toStr(json["logoBgColor"]) ?? "",
+      epgPrefix: JsonMap.toStr(json["epgPrefix"]) ?? "",
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:radiozeit/app/widgets/error_load.dart';
 import 'package:radiozeit/app/widgets/shimmer.dart';
+import 'package:radiozeit/data/model/now_playing.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/features/radio_list/radio_list_item.dart';
 import 'package:radiozeit/features/radio_list/widget/radio_not_found_info.dart';
@@ -16,11 +17,15 @@ class RadioList extends StatelessWidget {
   final Function(AppRadio,bool) setFavorite;
   final Function(AppRadio) openRadio;
 
+  /// Who currently has each aggregated station's stream, keyed by EPG slug.
+  /// Arrives after the list itself, so rows render without it.
+  final Map<String, NowPlaying> nowPlaying;
+
   const RadioList({super.key,
     required this.list,
     this.error ="",
     required this.isLoading,
-    this.reload, required this.favorites, required this.setFavorite, required this.openRadio, this.shrinkWrap = false, this.physics});
+    this.reload, required this.favorites, required this.setFavorite, required this.openRadio, this.shrinkWrap = false, this.physics, this.nowPlaying = const {}});
 
 
   @override
@@ -57,6 +62,10 @@ class RadioList extends StatelessWidget {
   }
 
   _content() {
+    // Once per list, not once per row: a getter here read as free and was
+    // rebuilding the whole index for every aggregated station on screen.
+    final byEpgPrefix = NowPlaying.byEpgPrefix(list);
+
     return ListView.separated(
       shrinkWrap: shrinkWrap,
       physics: physics,
@@ -69,11 +78,14 @@ class RadioList extends StatelessWidget {
         }
         var radio = list[index];
         var isFavorite = favorites.contains(radio.id);
+        var onAir = nowPlaying[radio.epgPrefix];
         return RadioListItem(
           radio: radio,
           isFavorite: isFavorite,
           toggleFavorite: () => setFavorite(radio,!isFavorite),
           openRadio: () => openRadio(radio),
+          nowPlaying: onAir,
+          nowPlayingStudio: onAir?.studioOf(radio, byEpgPrefix),
         );
       },
       separatorBuilder: (context, index) => const SizedBox(height: 16,),

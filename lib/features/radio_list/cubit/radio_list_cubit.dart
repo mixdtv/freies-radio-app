@@ -5,6 +5,7 @@ import 'package:bloc_presentation/bloc_presentation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:radiozeit/data/api/repository.dart';
+import 'package:radiozeit/data/model/now_playing.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/features/location/location_service.dart';
 import 'package:radiozeit/features/location/model/location.dart';
@@ -185,6 +186,26 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
     emit(state.copyWith(radioList: cached, isListEmpty: false, isLoading: false));
   }
 
+  /// Fill in who currently has each aggregated station's stream.
+  ///
+  /// Only aggregated stations are asked about: for a station broadcasting its
+  /// own programme, "who is on air" is the station itself and says nothing.
+  ///
+  /// Runs after the list is displayed and never blocks it. If the EPG is
+  /// unreachable, or older than this build and has no such endpoint, the map
+  /// stays empty and the rows keep their member strip.
+  _loadNowPlaying(List<AppRadio> radios) async {
+    var slugs = radios
+        .where((r) => r.members.isNotEmpty && r.epgPrefix.isNotEmpty)
+        .map((r) => r.epgPrefix)
+        .toList();
+    if(slugs.isEmpty) return;
+
+    var onAir = await repo.loadNowPlaying(epgSlugs: slugs);
+    if(onAir.isEmpty || isClosed) return;
+    emit(state.copyWith(nowPlaying: onAir));
+  }
+
   _loadRadioList(Location? location) async {
     // Cancel any request still in flight: a fresh position can start a second
     // one, and the older answer must not land on top of the newer.
@@ -199,6 +220,9 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
           isListEmpty:resp.radioList.isEmpty,
           radioList: resp.radioList
       ));
+      // Deliberately not awaited: the list is already on screen and must not
+      // wait on a second request to be usable.
+      _loadNowPlaying(resp.radioList);
     } else {
       if(!resp.isCanceled) {
         // With a cached list already on screen an error banner would sit over
@@ -223,6 +247,11 @@ class RadioListState {
   final City city;
   final isLocationEnabled;
 
+  /// Who currently has each aggregated station's stream, keyed by EPG slug.
+  /// Empty until the EPG answers, and empty for good if it never does — the
+  /// list does not wait for it.
+  final Map<String, NowPlaying> nowPlaying;
+
   const RadioListState({
     required this.radioList,
     required this.isLoading,
@@ -230,6 +259,7 @@ class RadioListState {
     required this.isLocationEnabled,
     required this.isListEmpty,
     required this.city,
+    this.nowPlaying = const {},
   });
 
   const RadioListState.init({
@@ -239,6 +269,7 @@ class RadioListState {
     this.isListEmpty = false,
     this.loadingError = "",
     this.city = const City.empty(),
+    this.nowPlaying = const {},
   });
 
   RadioListState copyWith({
@@ -248,7 +279,8 @@ class RadioListState {
     bool? isListEmpty,
     bool? isLocationEnabled,
     String? loadingError,
-    City? city
+    City? city,
+    Map<String, NowPlaying>? nowPlaying
   }) {
     return RadioListState(
       radioList: radioList ?? this.radioList,
@@ -257,6 +289,7 @@ class RadioListState {
       isLocationEnabled: isLocationEnabled ?? this.isLocationEnabled,
       city: city ?? this.city,
       isListEmpty: isListEmpty ?? this.isListEmpty,
+      nowPlaying: nowPlaying ?? this.nowPlaying,
     );
   }
 

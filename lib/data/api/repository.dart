@@ -13,8 +13,10 @@ import 'package:radiozeit/data/api/response/radio_list_response.dart';
 import 'package:radiozeit/data/api/response/server_response.dart';
 import 'package:radiozeit/data/api/response/transcript_response.dart';
 import 'package:radiozeit/data/api/response/visual_bands_response.dart';
+import 'package:radiozeit/data/model/now_playing.dart';
 import 'package:radiozeit/data/model/podcast.dart';
 import 'package:radiozeit/features/location/model/location.dart';
+import 'package:radiozeit/utils/json_map.dart';
 
 /// Top-level function for parsing RSS feed in a separate isolate.
 /// Must be top-level or static to work with compute().
@@ -190,6 +192,35 @@ class Repository {
       data: data,
       cancelToken: cancelToken,
     ).then((value) => EpgResponseResponse(value));
+  }
+
+  /// What is on air right now for [epgSlugs], keyed by slug.
+  ///
+  /// One request for the whole list rather than one per station. Deliberately
+  /// forgiving: an app build can be newer than the EPG deployment, and a
+  /// station missing this line loses only a nicety, so any failure — including
+  /// the endpoint not existing yet — yields an empty map rather than an error
+  /// the list would have to render.
+  Future<Map<String, NowPlaying>> loadNowPlaying({
+    required List<String> epgSlugs,
+    CancelToken? cancelToken,
+  }) async {
+    if (epgSlugs.isEmpty) return const {};
+
+    try {
+      final value = await api.get(
+        patch: "${AppConfig.epgBaseUrl}now",
+        data: {"stations": epgSlugs.join(",")},
+        cancelToken: cancelToken,
+      );
+
+      final out = NowPlaying.mapFromResponse(value.data);
+      _log.info('loadNowPlaying: ${out.length} of ${epgSlugs.length} on air');
+      return out;
+    } catch (error) {
+      _log.info('loadNowPlaying: unavailable ($error)');
+      return const {};
+    }
   }
 
   Future<EpgResponseResponse> searchEpg({
