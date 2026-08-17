@@ -27,13 +27,17 @@ class NowPlaying {
 
   static NowPlaying? fromJson(Map<String, dynamic> json) {
     final name = JsonMap.toStr(json["subheadline"]) ?? "";
-    final title = JsonMap.toStr(json["title"]) ?? "";
-    if (name.isEmpty && title.isEmpty) return null;
+    final source = JsonMap.toStr(json["sourceStation"]) ?? "";
+    // Something has to end up on the line: either a studio name to print, or
+    // a source slug that can find a member whose name we print instead. The
+    // programme title is not one of them — it is carried but never shown, and
+    // accepting an entry on its strength painted a dot with nothing after it.
+    if (name.isEmpty && source.isEmpty) return null;
 
     return NowPlaying(
-      sourceStation: JsonMap.toStr(json["sourceStation"]) ?? "",
+      sourceStation: source,
       studioName: name,
-      title: title,
+      title: JsonMap.toStr(json["title"]) ?? "",
       until: DateTime.tryParse(
         JsonMap.toStr(json["epgBroadcastEndTime"]) ?? "",
       ),
@@ -84,6 +88,26 @@ class NowPlaying {
       if (parsed != null) out[slug] = parsed;
     });
     return out;
+  }
+
+  /// The subset of [onAir] describing stations that are actually in [stations].
+  ///
+  /// A new station list makes entries for stations it does not contain
+  /// meaningless — they describe a list that is no longer on screen. Dropping
+  /// only those, rather than clearing the map, keeps the line on the rows that
+  /// survive instead of blinking it off on every refresh.
+  static Map<String, NowPlaying> keepListed(
+    Map<String, NowPlaying> onAir,
+    List<AppRadio> stations,
+  ) {
+    if (onAir.isEmpty) return onAir;
+
+    final kept = <String, NowPlaying>{};
+    for (final station in stations) {
+      final entry = onAir[station.epgPrefix];
+      if (entry != null) kept[station.epgPrefix] = entry;
+    }
+    return kept;
   }
 
   /// Index of the station list by EPG slug, for [studioOf].

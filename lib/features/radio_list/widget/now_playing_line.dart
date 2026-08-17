@@ -31,6 +31,13 @@ class NowPlayingLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The member's name when it could be identified, the EPG's own display
+    // name otherwise. Both can be empty — an entry may name a source station
+    // that matches no member — and a dot followed by nothing is worse than no
+    // line at all.
+    final label = studio?.name ?? nowPlaying.studioName;
+    if (label.isEmpty) return const SizedBox.shrink();
+
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.color?.withOpacity(0.6);
 
@@ -62,7 +69,7 @@ class NowPlayingLine extends StatelessWidget {
           ],
           Flexible(
             child: Text(
-              studio?.name ?? nowPlaying.studioName,
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(

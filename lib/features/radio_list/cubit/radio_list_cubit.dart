@@ -194,14 +194,17 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
   /// Runs after the list is displayed and never blocks it. If the EPG is
   /// unreachable, or older than this build and has no such endpoint, the map
   /// stays empty and the rows keep their member strip.
-  _loadNowPlaying(List<AppRadio> radios) async {
+  _loadNowPlaying(List<AppRadio> radios, CancelToken? cancel) async {
     var slugs = radios
         .where((r) => r.members.isNotEmpty && r.epgPrefix.isNotEmpty)
         .map((r) => r.epgPrefix)
         .toList();
     if(slugs.isEmpty) return;
 
-    var onAir = await repo.loadNowPlaying(epgSlugs: slugs);
+    // The token of the request that produced this list, so a newer start
+    // cancels this one too — otherwise an older answer could land on top of a
+    // newer list, which is the very thing _loadRadioList cancels to avoid.
+    var onAir = await repo.loadNowPlaying(epgSlugs: slugs, cancelToken: cancel);
     if(onAir.isEmpty || isClosed) return;
     emit(state.copyWith(nowPlaying: onAir));
   }
@@ -218,11 +221,16 @@ class RadioListCubit extends Cubit<RadioListState> with BlocPresentationMixin<Ra
       emit(state.copyWith(
           isLoading: false,
           isListEmpty:resp.radioList.isEmpty,
-          radioList: resp.radioList
+          radioList: resp.radioList,
+          // What was on air belongs to the list it was fetched for. Keeping
+          // only the stations this list still holds drops entries that now
+          // describe nothing, without blinking the line off the rows that
+          // remain while the new answer is on its way.
+          nowPlaying: NowPlaying.keepListed(state.nowPlaying, resp.radioList),
       ));
       // Deliberately not awaited: the list is already on screen and must not
       // wait on a second request to be usable.
-      _loadNowPlaying(resp.radioList);
+      _loadNowPlaying(resp.radioList, cancelLoadRadio);
     } else {
       if(!resp.isCanceled) {
         // With a cached list already on screen an error banner would sit over

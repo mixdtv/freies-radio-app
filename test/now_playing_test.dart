@@ -44,8 +44,22 @@ void main() {
       expect(now.until, DateTime(2026, 8, 13, 20));
     });
 
-    test('an entry with neither studio nor title is not on air', () {
+    test('an entry with nothing to name is not on air', () {
       expect(parse({}), isNull);
+    });
+
+    // The title is carried but never displayed, so an entry that has only a
+    // title used to paint a dot with nothing after it.
+    test('a title alone is not enough to be on air', () {
+      expect(parse({'title': 'Taxi Berlin'}), isNull);
+    });
+
+    test('a source station alone is enough — the member supplies the name', () {
+      final now = parse({'sourceStation': 'piradio', 'title': 'Taxi Berlin'});
+
+      expect(now, isNotNull);
+      expect(now!.studioOf(frbbBerlin(), NowPlaying.byEpgPrefix([piradio()]))!.name,
+          'Pi Radio');
     });
 
     test('survives a missing end time', () {
@@ -229,6 +243,33 @@ void main() {
       final now = parse({'subheadline': 'Weg', 'sourceStation': 'entfernt'})!;
 
       expect(now.studioOf(frbbBerlin(), const {}), isNull);
+    });
+  });
+
+  group('keeping only what the new list describes', () {
+    final onAir = {
+      'frbb-berlin': parse({'subheadline': 'Pi Radio', 'sourceStation': 'piradio'})!,
+      'rkb': parse({'subheadline': 'Radio Ginseng', 'sourceStation': 'ginseng'})!,
+    };
+
+    test('drops stations the new list does not contain', () {
+      final kept = NowPlaying.keepListed(onAir, [frbbBerlin()]);
+
+      expect(kept.keys, ['frbb-berlin']);
+    });
+
+    test('keeps the stations that survive, so their line does not blink', () {
+      final kept = NowPlaying.keepListed(onAir, [frbbBerlin()]);
+
+      expect(kept['frbb-berlin']!.studioName, 'Pi Radio');
+    });
+
+    test('an empty list keeps nothing', () {
+      expect(NowPlaying.keepListed(onAir, const []), isEmpty);
+    });
+
+    test('nothing on air stays nothing', () {
+      expect(NowPlaying.keepListed(const {}, [frbbBerlin()]), isEmpty);
     });
   });
 

@@ -147,6 +147,17 @@ void main() {
       expect(find.text('JETZT'), findsNothing);
     });
 
+    // An entry can name a source station that matches no member, leaving
+    // nothing to print next to the dot.
+    testWidgets('nothing is drawn when there is no name to show', (tester) async {
+      final unnamed = NowPlaying.fromJson({'sourceStation': 'unknown-studio'})!;
+
+      await tester.pumpWidget(wrap(radioWith(), onAir: unnamed));
+
+      expect(find.text('JETZT'), findsNothing);
+      expect(tester.getSize(find.byType(NowPlayingLine)), Size.zero);
+    });
+
     testWidgets('members claim no height of their own', (tester) async {
       final bare = await rowHeight(tester, radioWith());
       final withMembers = await rowHeight(tester, radioWith(members: [

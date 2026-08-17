@@ -310,6 +310,10 @@ class _RadioListPageState extends State<RadioListPage> with SingleTickerProvider
                       list: cubit.state.radioList.where((e) => favoriteList.contains(e.id)).toList(),
                       isLoading: cubit.state.isLoading,
                       favorites: favoriteList,
+                      // Same rows as the list behind the sheet, so an
+                      // aggregated station does not lose its line by being
+                      // favourited.
+                      nowPlaying: cubit.state.nowPlaying,
                       setFavorite: _setFavorite,
                         openRadio: (radio) {
                           Navigator.of(context).pop();
