@@ -1,29 +1,23 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radiozeit/app/bottom_navigation/bottom_navigation_cubit.dart';
 import 'package:radiozeit/app/bottom_navigation/menu_config.dart';
 import 'package:radiozeit/app/widgets/input/input_search.dart';
+import 'package:radiozeit/app/widgets/shimmer.dart';
 import 'package:radiozeit/data/model/radio.dart';
 import 'package:radiozeit/data/model/radio_program.dart';
 import 'package:radiozeit/features/location/model/location_city.dart';
 import 'package:radiozeit/features/location/widgets/city_list.dart';
-import 'package:radiozeit/features/location/widgets/city_preview.dart';
 import 'package:radiozeit/features/player/player_cubit.dart';
 import 'package:radiozeit/features/radio_list/cubit/radio_favorite_cubit.dart';
 import 'package:radiozeit/features/radio_list/cubit/radio_list_cubit.dart';
 import 'package:radiozeit/features/radio_list/cubit/radio_list_search_cubit.dart';
-import 'package:radiozeit/features/radio_list/page_radio_list_city.dart';
 import 'package:radiozeit/features/radio_list/radio_list.dart';
-import 'package:radiozeit/features/radio_list/radio_list_item.dart';
 import 'package:radiozeit/features/radio_list/widget/radio_not_found_info.dart';
 import 'package:radiozeit/features/podcast/bloc/podcast_cubit.dart';
 import 'package:radiozeit/features/timeline/bloc/timeline_cubit.dart';
-import 'package:radiozeit/features/transcript/radio_transcript_page.dart';
 import 'package:radiozeit/utils/colors.dart';
-import 'package:radiozeit/utils/settings.dart';
 import 'package:radiozeit/l10n/app_localizations.dart';
 
 class RadioSearchPage extends StatelessWidget {
@@ -70,84 +64,57 @@ class RadioSearchPage extends StatelessWidget {
                   (!isProgramLoading && programList.isNotEmpty && visiblePrograms.isEmpty);
 
               if(!isCityLoading && !isRadioLoading && !isProgramLoading && isCityNotFound && isRadioNotFound && programNotFound) {
-                return Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset("assets/icons/ic_search_not_found.svg"),
-                      const SizedBox(height: 14,),
-                      Text(AppLocalizations.of(context)!.stations_not_found,style: Theme.of(context).textTheme.headlineLarge,),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32,vertical: 14),
-                        child: RadioNotFoundInfo(),
-                      )
-                    ],
-                  ),
-                );
+                return Expanded(child: _noResults(context));
               }
-              childs.add(_groupTitle(context, AppLocalizations.of(context)!.city));
-              if(!isCityLoading && isCityNotFound) {
-                childs.add(
-                    Center(
-                      child: Opacity(
-                          opacity: 0.3,
-                          child: Text(AppLocalizations.of(context)!.city_not_found,style: Theme.of(context).textTheme.headlineMedium,)),
-                    )
-                );
-              } else {
-                childs.add(
-                    CityList(
-                      shrinkWrap: true,
-                      isLoading: isCityLoading,
-                      physics: const NeverScrollableScrollPhysics(),
-                      list:cityList,
-                      onSelectCity: (city) => _onSelectCity(context,city),
-                    )
-                );
-              }
-              // Programs section (before stations for better visibility)
-              childs.add(_groupTitle(context, AppLocalizations.of(context)!.timeline));
+              final l10n = AppLocalizations.of(context)!;
+
+              // Programmes first: they are the most specific match and change
+              // by the minute; stations second; cities last as the broadest
+              // way in.
+              childs.add(_groupTitle(context, l10n.programs));
               if(!isProgramLoading && programNotFound) {
-                childs.add(
-                    Center(
-                      child: Opacity(
-                          opacity: 0.3,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Text(AppLocalizations.of(context)!.stations_not_found,style: Theme.of(context).textTheme.bodyLarge,),
-                          )),
-                    )
-                );
+                childs.add(_notFound(context, l10n.programs_not_found));
               } else {
                 childs.add(_programList(context, visiblePrograms, isProgramLoading));
               }
 
-              childs.add(_groupTitle(context, AppLocalizations.of(context)!.stations));
-
+              childs.add(_groupTitle(context, l10n.stations));
               if(!isRadioLoading && isRadioNotFound) {
-                childs.add(Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SvgPicture.asset("assets/icons/ic_search_not_found.svg"),
-                    const SizedBox(height: 14,),
-                    Text(AppLocalizations.of(context)!.stations_not_found,style: Theme.of(context).textTheme.headlineLarge,),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32,vertical: 14),
-                      child: RadioNotFoundInfo(),
-                    )
-                  ],
-                ));
+                childs.add(_notFound(context, l10n.stations_not_found));
               } else {
                 childs.add(RadioList(
                   list: radioList,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   isLoading: isRadioLoading,
+                  placeholderCount: _placeholderRows,
+                  showNotFoundInfo: false,
                   favorites: radioFavorites,
                   setFavorite: (radio, status) => context.read<RadioFavoriteCubit>().toggleFavorite(radio, status),
                   openRadio: (radio) => _openRadio(context,radio),
                 ));
               }
+
+              childs.add(_groupTitle(context, l10n.city));
+              if(!isCityLoading && isCityNotFound) {
+                childs.add(_notFound(context, l10n.city_not_found));
+              } else {
+                childs.add(
+                    CityList(
+                      shrinkWrap: true,
+                      isLoading: isCityLoading,
+                      physics: const NeverScrollableScrollPhysics(),
+                      list:cityList.take(_maxCities).toList(),
+                      onSelectCity: (city) => _onSelectCity(context,city),
+                    )
+                );
+              }
+
+              // Page footer, after the last section, not wedged between two.
+              childs.add(Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: RadioNotFoundInfo(),
+              ));
 
               return Expanded(child: SingleChildScrollView(
                 child: Column(
@@ -190,11 +157,102 @@ class RadioSearchPage extends StatelessWidget {
     );
   }
 
+  /// Nothing matched in any section: name the query (typos jump out), say
+  /// what was searched (the ±7-day programme window is the usual surprise),
+  /// give one next step, and keep "station missing?" as an aside below.
+  Widget _noResults(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final query = context.select((RadioListSearchCubit cubit) => cubit.state.query);
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyLarge?.copyWith(
+      color: theme.colorScheme.onBackground.withOpacity(0.5),
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.search_no_results_title(query),
+            style: theme.textTheme.headlineMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(l10n.search_no_results_scope, style: muted, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          Text(l10n.search_no_results_hint, style: muted, textAlign: TextAlign.center),
+          const SizedBox(height: 40),
+          RadioNotFoundInfo(),
+        ],
+      ),
+    );
+  }
+
+  /// The cities endpoint returns every match alphabetically with no limit;
+  /// a short prefix like "bad" would otherwise push the footer off screen.
+  static const int _maxCities = 5;
+
+  /// Shimmer rows per section while a search is running. Three sections
+  /// stack on one screen, so each gets a hint of a list, not a full page.
+  static const int _placeholderRows = 3;
+
+  /// The quiet "nothing here" row every section shares: same size, same
+  /// weight, sitting where the first result would be.
+  Widget _notFound(BuildContext context, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.displayMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onBackground.withOpacity(0.4),
+        ),
+      ),
+    );
+  }
+
+  static Widget _programPlaceholder() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 24),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 180,
+                height: 14,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 120,
+                height: 10,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _programList(BuildContext context, List<RadioEpg> programs, bool isLoading) {
     if (isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: CircularProgressIndicator()),
+      return Shimmer(
+        child: ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: _placeholderRows,
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemBuilder: (context, index) => ShimmerLoading(child: _programPlaceholder()),
+        ),
       );
     }
     return ListView.builder(

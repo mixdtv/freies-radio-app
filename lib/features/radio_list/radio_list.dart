@@ -21,11 +21,18 @@ class RadioList extends StatelessWidget {
   /// Arrives after the list itself, so rows render without it.
   final Map<String, NowPlaying> nowPlaying;
 
+  /// Shimmer rows shown while loading.
+  final int placeholderCount;
+
+  /// Append the "station missing?" info below the last row. Off when the
+  /// list is one section of a longer page that places its own footer.
+  final bool showNotFoundInfo;
+
   const RadioList({super.key,
     required this.list,
     this.error ="",
     required this.isLoading,
-    this.reload, required this.favorites, required this.setFavorite, required this.openRadio, this.shrinkWrap = false, this.physics, this.nowPlaying = const {}});
+    this.reload, required this.favorites, required this.setFavorite, required this.openRadio, this.shrinkWrap = false, this.physics, this.nowPlaying = const {}, this.placeholderCount = 10, this.showNotFoundInfo = true});
 
 
   @override
@@ -40,7 +47,7 @@ class RadioList extends StatelessWidget {
             return ShimmerLoading(child: RadioListItem.placeholder());
           },
           separatorBuilder: (context, index) => const SizedBox(height: 16,),
-          itemCount: 10,
+          itemCount: placeholderCount,
           padding: const EdgeInsets.all(16),
         ),
       );
@@ -89,7 +96,7 @@ class RadioList extends StatelessWidget {
         );
       },
       separatorBuilder: (context, index) => const SizedBox(height: 16,),
-      itemCount: list.length + 1,
+      itemCount: list.length + (showNotFoundInfo ? 1 : 0),
       padding: const EdgeInsets.symmetric(vertical: 16),
     );
   }
