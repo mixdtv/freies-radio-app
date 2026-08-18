@@ -1,7 +1,7 @@
-• Programme guide: the date now stays pinned while you scroll
-• New button jumps back to the show that is currently on
-• The show you are listening to is marked separately
-• A note when a station has nothing scheduled, including when the next show starts
-• Stations now reliably open at the current show
-• English app language: weekdays and dates are localised properly
+• Search: programs, stations and cities in clear sections, with better hints when nothing matches
+• Network stations show their members – and who is on air right now
+• Station list appears instantly on start, even without location access
+• Programme guide: date stays pinned while scrolling, jump back to the current show
+• The show you are listening to is marked
+• A note with the next show when nothing is on right now
 • Minor bug fixes
